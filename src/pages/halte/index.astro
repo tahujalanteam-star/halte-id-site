@@ -1,0 +1,46 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { loadStops } from "../../lib/data.js";
+
+const stops = loadStops();
+const entries = Object.entries(stops).sort((a, b) => a[1].name.localeCompare(b[1].name));
+---
+<BaseLayout
+  title="Daftar Semua Halte Bus Jakarta"
+  description="Daftar lengkap seluruh halte Transjakarta dan JakLingko di Jakarta, cari berdasarkan nama halte."
+  canonicalPath="/halte"
+>
+  <h1>Daftar Halte</h1>
+  <p>{entries.length} halte tersedia.</p>
+  <input
+    id="stop-filter"
+    type="search"
+    placeholder="Cari nama halte..."
+    style="width:100%;padding:0.6rem 0.8rem;border:1px solid #e2e8f0;border-radius:0.5rem;margin-bottom:1rem;font-size:0.95rem;"
+  />
+  <div id="stop-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.6rem;">
+    {entries.map(([id, s]) => (
+      <a href={`/halte/${id}`} class="card" data-name={s.name.toLowerCase()} style="margin:0;">
+        {s.name}
+      </a>
+    ))}
+  </div>
+  <p id="stop-empty" hidden>Tidak ada halte yang cocok.</p>
+
+  <script>
+    const input = document.getElementById("stop-filter");
+    const grid = document.getElementById("stop-grid");
+    const empty = document.getElementById("stop-empty");
+    const cards = Array.from(grid.querySelectorAll("[data-name]"));
+    input.addEventListener("input", () => {
+      const q = input.value.trim().toLowerCase();
+      let visible = 0;
+      cards.forEach(card => {
+        const match = card.dataset.name.includes(q);
+        card.hidden = !match;
+        if (match) visible++;
+      });
+      empty.hidden = visible !== 0;
+    });
+  </script>
+</BaseLayout>

@@ -1,0 +1,25 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { loadRoutesIndex, routeSlug, compareCodes } from "../../lib/data.js";
+
+const routes = loadRoutesIndex().slice().sort((a, b) => compareCodes(a.id, b.id));
+---
+<BaseLayout
+  title="Daftar Semua Rute Transjakarta & JakLingko"
+  description="Daftar lengkap seluruh koridor dan rute Transjakarta serta JakLingko di Jakarta, beserta jumlah halte dan rute pemberhentian."
+  canonicalPath="/rute"
+>
+  <h1>Daftar Rute</h1>
+  <p>{routes.length} rute tersedia.</p>
+  <div>
+    {routes.map(r => (
+      <a href={`/rute/${routeSlug(r)}`} class="card" style="display:flex;align-items:center;gap:0.75rem;">
+        <span class="badge" style={`background:${r.route_color || "#334155"};font-size:0.9rem;`}>{r.id}</span>
+        <span>
+          <div style="font-weight:600;color:#0f172a;">{r.route_name}</div>
+          <div style="font-size:0.85rem;color:#64748b;">{r.stops_count} halte &middot; {r.start_stop} s/d {r.end_stop}</div>
+        </span>
+      </a>
+    ))}
+  </div>
+</BaseLayout>

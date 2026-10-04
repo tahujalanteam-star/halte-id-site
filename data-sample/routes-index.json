@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "route_number": "1",
+    "route_name": "Blok M \u21c4 Kota",
+    "route_color": "#D90429",
+    "stops_count": 9,
+    "start_stop": "Blok M",
+    "end_stop": "Kota"
+  },
+  {
+    "id": "2",
+    "route_number": "2",
+    "route_name": "Pulo Gadung \u21c4 Monas",
+    "route_color": "#354992",
+    "stops_count": 2,
+    "start_stop": "Pulo Gadung 1",
+    "end_stop": "Monumen Nasional"
+  }
+]

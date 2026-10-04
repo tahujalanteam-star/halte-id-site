@@ -1,0 +1,34 @@
+# Taruh file ini di repo DATA Anda (misal petabus-jsonmaker / halte-id-data),
+# di path: .github/workflows/trigger-site-build.yml
+#
+# Setiap kali stops.json / routes / stop-services.json / routes-index.json
+# berubah dan di-push, ini memberitahu repo situs (halte-id-site) untuk
+# rebuild & redeploy seluruh halaman statis.
+
+name: Trigger site rebuild
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "stops.json"
+      - "routes/**"
+      - "stop-services.json"
+      - "routes-index.json"
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify site repo
+        env:
+          # Fine-grained PAT dengan izin "Contents: write" + "Actions: write"
+          # khusus ke repo halte-id-site saja. Simpan sebagai secret di SINI
+          # (repo data), namanya SITE_REPO_PAT.
+          GH_TOKEN: ${{ secrets.SITE_REPO_PAT }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/YOUR_GITHUB_USERNAME/halte-id-site/dispatches \
+            -d '{"event_type":"data-updated"}'

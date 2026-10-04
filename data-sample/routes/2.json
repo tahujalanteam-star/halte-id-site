@@ -1,0 +1,23 @@
+{
+  "id": "2",
+  "route_number": "Pulo Gadung \u21c4 Monas",
+  "route_color": "#354992",
+  "directions": [
+    {
+      "id": "dir-1",
+      "title": "Pulo Gadung \u2192 Monas",
+      "stop_ids": ["pulo-gadung-1", "monumen-nasional"]
+    },
+    {
+      "id": "dir-2",
+      "title": "Monas \u2192 Pulo Gadung",
+      "stop_ids": ["monumen-nasional", "pulo-gadung-1"]
+    }
+  ],
+  "timetable": {
+    "operating_days": "Setiap Hari",
+    "schedules": [
+      { "from": "Kedua arah", "first_departure": "05:00", "last_departure": "22:00" }
+    ]
+  }
+}

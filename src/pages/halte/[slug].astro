@@ -1,0 +1,46 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
+
+export async function getStaticPaths() {
+  const stops = loadStops();
+  return Object.keys(stops).map(stopId => ({
+    params: { slug: stopId },
+    props: { stopId },
+  }));
+}
+
+const { stopId } = Astro.props;
+const stops = loadStops();
+const stop = stops[stopId];
+const stopServices = loadStopServices();
+const routeLookup = buildRouteLookup(loadRoutesIndex());
+const serving = routesForStop(stopId, stopServices, routeLookup);
+const typeLabel = stop.type === "brt" ? "Halte BRT" : "Halte Non-BRT";
+---
+<BaseLayout
+  title={`Halte ${stop.name}`}
+  description={`Daftar rute Transjakarta & JakLingko yang berhenti di halte ${stop.name}. ${typeLabel}.`}
+  canonicalPath={`/halte/${stopId}`}
+>
+  <nav style="font-size:0.85rem;color:#64748b;margin-bottom:0.75rem;">
+    <a href="/halte">Daftar Halte</a> / <span>{stop.name}</span>
+  </nav>
+
+  <span class="badge" style="background:#334155;">{typeLabel}</span>
+  <h1>{stop.name}</h1>
+
+  <h2>Rute yang Berhenti di Sini</h2>
+  {serving.length === 0 ? (
+    <p>Belum ada data rute untuk halte ini.</p>
+  ) : (
+    <div>
+      {serving.map(r => (
+        <a href={`/rute/${r.slug}`} class="card" style="display:flex;align-items:center;gap:0.75rem;">
+          <span class="badge" style={`background:${r.route_color || "#334155"};font-size:0.9rem;`}>{r.id}</span>
+          <span style="color:#0f172a;font-weight:600;">{r.route_name}</span>
+        </a>
+      ))}
+    </div>
+  )}
+</BaseLayout>

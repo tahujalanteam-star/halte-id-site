@@ -1,0 +1,23 @@
+{
+  "id": "1",
+  "route_number": "Blok M \u21c4 Kota",
+  "route_color": "#D90429",
+  "directions": [
+    {
+      "id": "dir-1",
+      "title": "Blok M \u2192 Kota",
+      "stop_ids": ["blok-m", "asean", "masjid-agung", "bundaran-senayan", "dukuh-atas", "monumen-nasional", "harmoni", "kota"]
+    },
+    {
+      "id": "dir-2",
+      "title": "Kota \u2192 Blok M",
+      "stop_ids": ["kota", "harmoni", "monumen-nasional", "dukuh-atas", "bundaran-senayan", "masjid-agung", "asean", "blok-m"]
+    }
+  ],
+  "timetable": {
+    "operating_days": "Setiap Hari",
+    "schedules": [
+      { "from": "Kedua arah", "first_departure": "00:00", "last_departure": "24:00" }
+    ]
+  }
+}

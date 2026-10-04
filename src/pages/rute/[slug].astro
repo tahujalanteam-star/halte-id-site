@@ -1,0 +1,103 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  loadStops,
+  loadRoutesIndex,
+  loadRoute,
+  loadStopServices,
+  loadJalur,
+  routeSlug,
+  buildRouteLookup,
+  routesForStop,
+} from "../../lib/data.js";
+
+export async function getStaticPaths() {
+  const routesIndex = loadRoutesIndex();
+  return routesIndex.map(entry => ({
+    params: { slug: routeSlug(entry) },
+    props: { routeId: entry.id, summary: entry },
+  }));
+}
+
+const { routeId, summary } = Astro.props;
+const route = loadRoute(routeId);
+const stops = loadStops();
+const stopServices = loadStopServices();
+const routeLookup = buildRouteLookup(loadRoutesIndex());
+const jalur = loadJalur(routeId);
+
+const directions = route.directions || [];
+const schedule = route.timetable?.schedules?.[0];
+const operatingDays = route.timetable?.operating_days;
+
+const PUBLIC_MAPBOX_TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
+
+function staticMapUrl(dirId) {
+  if (!PUBLIC_MAPBOX_TOKEN || !jalur?.directions?.[dirId]?.geometry?.coordinates?.length) return null;
+  const line = {
+    type: "Feature",
+    properties: { stroke: route.route_color || "#D90429", "stroke-width": 4 },
+    geometry: jalur.directions[dirId].geometry,
+  };
+  const encoded = encodeURIComponent(JSON.stringify(line));
+  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/geojson(${encoded})/auto/800x360?padding=30&access_token=${PUBLIC_MAPBOX_TOKEN}`;
+}
+---
+<BaseLayout
+  title={`Rute ${route.id} — ${route.route_number}`}
+  description={`Jadwal, tarif, dan daftar halte pemberhentian rute ${route.id} ${route.route_number}. ${operatingDays || ""} ${schedule ? `mulai ${schedule.first_departure} sampai ${schedule.last_departure}.` : ""}`}
+  canonicalPath={`/rute/${routeSlug(summary)}`}
+>
+  <nav style="font-size:0.85rem;color:#64748b;margin-bottom:0.75rem;">
+    <a href="/rute">Daftar Rute</a> / <span>{route.id}</span>
+  </nav>
+
+  <div style={`display:flex;align-items:center;gap:0.75rem;`}>
+    <span class="badge" style={`background:${route.route_color || "#334155"};font-size:1rem;padding:0.3rem 0.7rem;`}>{route.id}</span>
+    <h1 style="margin:0;">{route.route_number}</h1>
+  </div>
+
+  <div class="meta-row">
+    {operatingDays && <span>📅 {operatingDays}</span>}
+    {schedule && <span>🕐 {schedule.first_departure} – {schedule.last_departure}</span>}
+  </div>
+
+  {directions.map(dir => {
+    const mapUrl = staticMapUrl(dir.id);
+    return (
+      <section style="margin-bottom:2.5rem;">
+        <h2>{dir.title}</h2>
+        {mapUrl && (
+          <img
+            src={mapUrl}
+            alt={`Peta jalur rute ${route.id} arah ${dir.title}`}
+            width="800"
+            height="360"
+            loading="lazy"
+            style="width:100%;height:auto;border-radius:0.6rem;border:1px solid #e2e8f0;margin-bottom:1rem;"
+          />
+        )}
+        <ol class="stop-list">
+          {dir.stop_ids.map(stopId => {
+            const stop = stops[stopId];
+            if (!stop) return null;
+            const serving = routesForStop(stopId, stopServices, routeLookup).filter(r => r.id !== route.id);
+            const shown = serving.slice(0, 4);
+            const extra = serving.length - shown.length;
+            return (
+              <li>
+                <a class="stop-name" href={`/halte/${stopId}`}>{stop.name}</a>
+                <div>
+                  {shown.map(r => (
+                    <a href={`/rute/${r.slug}`} class="badge" style={`background:${r.route_color || "#64748b"};`}>{r.id}</a>
+                  ))}
+                  {extra > 0 && <span class="badge" style="background:#e2e8f0;color:#334155;">+{extra} rute</span>}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    );
+  })}
+</BaseLayout>

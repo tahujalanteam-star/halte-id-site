@@ -1,0 +1,94 @@
+{
+  "blok-m": {
+    "name": "Blok M",
+    "transfers": [
+      { "line": "1C", "type": "nonbrt" },
+      { "line": "1E", "type": "nonbrt" },
+      { "line": "1K", "type": "nonbrt" },
+      { "line": "1M", "type": "nonbrt" }
+    ],
+    "type": "brt",
+    "coordinates": [106.80305, -6.24361]
+  },
+  "asean": {
+    "name": "ASEAN",
+    "transfers": [
+      { "line": "MRT", "type": "mrt" },
+      { "line": "1W", "type": "nonbrt" },
+      { "line": "6M", "type": "nonbrt" },
+      { "line": "6V", "type": "nonbrt" },
+      { "line": "S61", "type": "nonbrt" }
+    ],
+    "type": "brt",
+    "coordinates": [106.7973, -6.2072]
+  },
+  "masjid-agung": {
+    "name": "Masjid Agung",
+    "transfers": [],
+    "type": "brt",
+    "coordinates": [106.8014, -6.2258]
+  },
+  "bundaran-senayan": {
+    "name": "Bundaran Senayan",
+    "transfers": [
+      { "line": "1F", "type": "nonbrt" },
+      { "line": "6V", "type": "nonbrt" },
+      { "line": "9C", "type": "nonbrt" },
+      { "line": "10H", "type": "nonbrt" }
+    ],
+    "type": "brt",
+    "coordinates": [106.8037, -6.2254]
+  },
+  "dukuh-atas": {
+    "name": "Dukuh Atas",
+    "transfers": [
+      { "line": "4", "type": "brt" },
+      { "line": "6", "type": "brt" },
+      { "line": "1B", "type": "nonbrt" },
+      { "line": "B25", "type": "nonbrt" }
+    ],
+    "type": "brt",
+    "coordinates": [106.8229, -6.2009]
+  },
+  "monumen-nasional": {
+    "name": "Monumen Nasional",
+    "transfers": [
+      { "line": "2", "type": "brt" },
+      { "line": "3", "type": "brt" },
+      { "line": "1A", "type": "nonbrt" },
+      { "line": "5C", "type": "nonbrt" },
+      { "line": "7F", "type": "nonbrt" }
+    ],
+    "type": "brt",
+    "coordinates": [106.8272, -6.1754]
+  },
+  "harmoni": {
+    "name": "Harmoni",
+    "transfers": [
+      { "line": "1A", "type": "nonbrt" },
+      { "line": "3H", "type": "nonbrt" }
+    ],
+    "type": "brt",
+    "coordinates": [106.8183, -6.1656]
+  },
+  "kota": {
+    "name": "Kota",
+    "transfers": [
+      { "line": "KRL", "type": "krl" },
+      { "line": "1", "type": "brt" },
+      { "line": "12", "type": "brt" },
+      { "line": "1A", "type": "nonbrt" },
+      { "line": "3H", "type": "nonbrt" },
+      { "line": "12A", "type": "nonbrt" },
+      { "line": "12B", "type": "nonbrt" }
+    ],
+    "type": "brt",
+    "coordinates": [106.8133, -6.1375]
+  },
+  "pulo-gadung-1": {
+    "name": "Pulo Gadung 1",
+    "transfers": [],
+    "type": "brt",
+    "coordinates": [106.9008, -6.1853]
+  }
+}
