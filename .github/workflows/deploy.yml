@@ -1,0 +1,51 @@
+name: Build & Deploy halte.id
+
+on:
+  push:
+    branches: [main]
+  # Fired by the private data repo's own workflow whenever stops/routes data
+  # changes there — see ci-templates/data-repo-trigger.yml for the sender side.
+  repository_dispatch:
+    types: [data-updated]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout site repo
+        uses: actions/checkout@v4
+
+      - name: Checkout private data repo
+        uses: actions/checkout@v4
+        with:
+          # Repo owner/name that holds stops.json, routes/, stop-services.json, etc.
+          repository: YOUR_GITHUB_USERNAME/halte-id-data
+          # Fine-grained PAT with read-only access to that one repo, stored as a secret.
+          token: ${{ secrets.DATA_REPO_PAT }}
+          path: data-real
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site
+        env:
+          DATA_DIR: data-real
+          SITE_URL: https://halte.id
+          # Public Mapbox token (pk.xxx) — safe to expose, used for build-time static map images.
+          PUBLIC_MAPBOX_TOKEN: ${{ secrets.PUBLIC_MAPBOX_TOKEN }}
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: halte-id
+          directory: dist
