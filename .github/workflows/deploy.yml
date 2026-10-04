@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout site repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Checkout private data repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Repo owner/name that holds stops.json, routes/, stop-services.json, etc.
           repository: tahujalanteam-star/halte-id-data
@@ -26,7 +26,7 @@ jobs:
           path: data-real
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
