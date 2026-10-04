@@ -37,7 +37,7 @@ jobs:
       - name: Build site
         env:
           DATA_DIR: data-real
-          SITE_URL: https://halte.id
+          SITE_URL: https://halte-id.pages.dev
           # Public Mapbox token (pk.xxx) — safe to expose, used for build-time static map images.
           PUBLIC_MAPBOX_TOKEN: ${{ secrets.PUBLIC_MAPBOX_TOKEN }}
         run: npm run build
