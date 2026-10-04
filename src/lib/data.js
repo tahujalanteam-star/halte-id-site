@@ -8,7 +8,22 @@ import path from "node:path";
 const DATA_DIR = path.resolve(process.cwd(), process.env.DATA_DIR || "data");
 
 function readJSON(relPath, fallback = undefined) {
-  const full = path.join(DATA_DIR, relPath);
+  let full = path.join(DATA_DIR, relPath);
+
+  // Jika file dengan nama eksak tidak ditemukan, cari versi lain yang cocok tanpa membedakan huruf besar/kecil
+  if (!fs.existsSync(full)) {
+    const dir = path.dirname(full);
+    const base = path.basename(full);
+
+    if (fs.existsSync(dir)) {
+      const files = fs.readdirSync(dir);
+      const matchedFile = files.find(f => f.toLowerCase() === base.toLowerCase());
+      if (matchedFile) {
+        full = path.join(dir, matchedFile);
+      }
+    }
+  }
+
   try {
     return JSON.parse(fs.readFileSync(full, "utf-8"));
   } catch (err) {
