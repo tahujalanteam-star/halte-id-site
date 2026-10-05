@@ -20,10 +20,10 @@ jobs:
       
     steps:
       - name: Checkout site repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Checkout private data repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           # Repo owner/name that holds stops.json, routes/, stop-services.json, etc.
           repository: tahujalanteam-star/halte-id-data
@@ -32,7 +32,7 @@ jobs:
           path: data-real
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: 22.12.0
           cache: npm
@@ -44,9 +44,8 @@ jobs:
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v4
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: halte-id
-          directory: dist
+          command: pages deploy dist --project-name=halte-id
