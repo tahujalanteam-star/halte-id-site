@@ -1,0 +1,14 @@
+# build output & dependencies
+node_modules/
+dist/
+.astro/
+
+# data pribadi (repo data terpisah) — jangan sampai ikut ter-push
+/data/
+/data-real/
+
+# env & lainnya
+.env
+.env.*
+.DS_Store
+Thumbs.db

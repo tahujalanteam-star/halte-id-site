@@ -27,6 +27,34 @@ const stopServices = loadStopServices();
 const routeLookup = buildRouteLookup(loadRoutesIndex());
 const jalur = loadJalur(routeId);
 
+const MAX_VISIBLE_NON_BRT = 4;
+
+// Badge koneksi per halte diambil dari stops.json (stop.transfers) — data curated,
+// bukan stop-services.json. Rute utama (brt/mrt/krl/lrt/kai) selalu tampil;
+// rute non-BRT/JAK dibatasi 4, sisanya lewat tombol "+N rute".
+function transferBadges(stop) {
+  const list = (stop.transfers || []).filter(t => String(t.line) !== String(route.id));
+  const isNon = t => t.type === "nonbrt" || t.type === "jak";
+  const decorate = t => {
+    const info = routeLookup.get(String(t.line));
+    return {
+      line: String(t.line),
+      type: t.type,
+      non: isNon(t),
+      href: info && ["brt", "nonbrt", "jak"].includes(t.type) ? `/rute/${info.slug}` : null,
+      color: !isNon(t) && info?.entry?.route_color ? info.entry.route_color : null,
+    };
+  };
+  const primary = list.filter(t => !isNon(t)).map(decorate);
+  const non = list.filter(isNon).sort((a, b) => {
+    const ja = String(a.line).toUpperCase().startsWith("JAK") || a.type === "jak";
+    const jb = String(b.line).toUpperCase().startsWith("JAK") || b.type === "jak";
+    if (ja !== jb) return ja ? 1 : -1;
+    return String(a.line).localeCompare(String(b.line), undefined, { numeric: true, sensitivity: "base" });
+  }).map(decorate);
+  return { primary, visible: non.slice(0, MAX_VISIBLE_NON_BRT), hidden: non.slice(MAX_VISIBLE_NON_BRT) };
+}
+
 const directions = route.directions || [];
 const schedule = route.timetable?.schedules?.[0];
 const operatingDays = route.timetable?.operating_days;
@@ -58,17 +86,65 @@ function staticMapUrl(dirId, dirIndex) {
   </div>
 
   <div class="route-meta-card">
-    {operatingDays && <div class="meta-item">Hari operasi<b>{operatingDays}</b></div>}
-    {schedule && <div class="meta-item">Jam operasi<b>{schedule.first_departure} – {schedule.last_departure}</b></div>}
-    <div class="meta-item">Jumlah halte<b>{summary.stops_count}</b></div>
+    {operatingDays && <div class="meta-item"><svg class="meta-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="3" y="4.5" width="18" height="17" rx="3"/>
+          <path d="M8 2.5v4"/>
+          <path d="M16 2.5v4"/>
+          <path d="M3 9.5h18"/>
+          <path d="M8 13h.01"/>
+          <path d="M12 13h.01"/>
+          <path d="M16 13h.01"/>
+          <path d="M8 17h.01"/>
+          <path d="M12 17h.01"/>
+          <path d="M16 17h.01"/>
+        </svg><b>{operatingDays}</b></div>}
+    {schedule && <div class="meta-item"><svg class="meta-icon" 
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 7v5l3.5 2"/>
+        </svg><b>{schedule.first_departure} – {schedule.last_departure}</b></div>}
+    <div class="meta-item"><svg class="meta-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M4 5.5h16a2 2 0 0 1 2 2v2.2a2.5 2.5 0 0 0 0 4.6v2.2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2.2a2.5 2.5 0 0 0 0-4.6V7.5a2 2 0 0 1 2-2Z"/>
+          <path d="M9 9h6"/>
+          <path d="M9 15h4"/>
+          <path d="M9 12h6"/>
+        </svg><b>Rp3.500</b></div>
   </div>
 
   {directions.map((dir, dirIndex) => {
     const mapUrl = staticMapUrl(dir.id, dirIndex);
     const allNonBrt = dir.stop_ids.every(id => stops[id]?.type !== "brt");
     return (
-      <section class="dir-card">
-        <h2>{dir.title}</h2>
+      <section class="dir-card" data-dir-index={dirIndex}>
+        <div class="dir-head">
+          <h2>{dir.title}</h2>
+          {directions.length > 1 && (
+            <button type="button" class="dir-switch" hidden>Ubah arah</button>
+          )}
+        </div>
         {mapUrl && (
           <img class="route-map" src={mapUrl} alt={`Peta jalur rute ${route.id} arah ${dir.title}`} width="800" height="360" loading="lazy" />
         )}
@@ -76,18 +152,30 @@ function staticMapUrl(dirId, dirIndex) {
           {dir.stop_ids.map(stopId => {
             const stop = stops[stopId];
             if (!stop) return null;
-            const serving = routesForStop(stopId, stopServices, routeLookup).filter(r => r.id !== route.id);
-            const shown = serving.slice(0, 4);
-            const extra = serving.length - shown.length;
+            const tb = transferBadges(stop);
             return (
-              <li class="stop-item">
+              <li class={`stop-item ${stop.type === "brt" ? "is-brt-item" : "is-nonbrt-item"}`}>
                 <span class={stop.type === "brt" ? "stop-dot-brt" : "stop-dot-nonbrt"}></span>
                 <a class="stop-list-name" href={`/halte/${stopId}`}>{stop.name}</a>
-                <div>
-                  {shown.map(r => (
-                    <a href={`/rute/${r.slug}`} class="badge-sub" style={`background:${r.route_color || "#64748b"};`}>{r.id}</a>
+                <div class="transfers-wrapper">
+                  {[...tb.primary, ...tb.visible].map(t => (
+                    t.href
+                      ? <a href={t.href} class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`} style={t.color ? `background-color:${t.color};color:#fff;` : undefined}>{t.line}</a>
+                      : <span class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`}>{t.line}</span>
                   ))}
-                  {extra > 0 && <span class="badge-sub badge-more">+{extra} rute</span>}
+                  {tb.hidden.length > 0 && (
+                    <button type="button" class="btn-toggle-routes more-toggle" hidden>+{tb.hidden.length} rute</button>
+                  )}
+                  {tb.hidden.length > 0 && (
+                    <span class="extra-routes" hidden>
+                      {tb.hidden.map(t => (
+                        t.href
+                          ? <a href={t.href} class={`transfer-badge transfer-${t.type} is-non-brt`}>{t.line}</a>
+                          : <span class={`transfer-badge transfer-${t.type} is-non-brt`}>{t.line}</span>
+                      ))}
+                      <button type="button" class="btn-toggle-routes less-toggle">&#8630; Tutup</button>
+                    </span>
+                  )}
                 </div>
               </li>
             );
@@ -96,4 +184,56 @@ function staticMapUrl(dirId, dirIndex) {
       </section>
     );
   })}
+
+  <style>
+    .transfers-wrapper { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+    .transfer-badge { font-size: 0.68rem; padding: 2px 6px; border-radius: 10px; color: #fff; background-color: #6b7280;
+      min-width: 20px; min-height: 20px; text-align: center; line-height: 16px; }
+    a.transfer-badge:hover { text-decoration: none; opacity: 0.85; }
+    .transfer-nonbrt, .transfer-jak { background: none; color: var(--text-sub); }
+    .transfer-mrt { background-color: #db0000; }
+    .transfer-krl { background-color: #db6300; }
+    .btn-toggle-routes { background: #f1f3f5; color: #495057; border: 1px solid #ced4da; border-radius: 4px; padding: 1px 6px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-toggle-routes:hover { background: #e9ecef; }
+    [data-theme="dark"] .btn-toggle-routes { background: #334155; color: #e2e8f0; border-color: #475569; }
+    .extra-routes { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+    .dir-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
+    .dir-head h2 { margin: 0; }
+    .dir-switch { border: 1px solid var(--border-color); background: var(--card-bg); color: var(--primary);
+      border-radius: 999px; padding: 0.35rem 0.9rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .dir-switch:hover { border-color: var(--primary); }
+  </style>
+  <noscript><style is:inline>.extra-routes[hidden] { display: inline-flex !important; } .less-toggle { display: none; }</style></noscript>
+  <script>
+    // Tanpa JS (dan untuk mesin pencari) kedua arah tampil penuh.
+    // Dengan JS: tampilkan satu arah, tombol "(Ubah arah)" menukar arah.
+    const cards = Array.from(document.querySelectorAll(".dir-card[data-dir-index]"));
+    if (cards.length > 1) {
+      let current = 0;
+      const show = (i) => {
+        current = i;
+        cards.forEach((c, idx) => { c.hidden = idx !== i; });
+      };
+      cards.forEach(c => {
+        const btn = c.querySelector(".dir-switch");
+        if (!btn) return;
+        btn.hidden = false;
+        btn.addEventListener("click", () => {
+          show((current + 1) % cards.length);
+          window.scrollTo({ top: Math.max(0, cards[current].offsetTop - 140), behavior: "smooth" });
+        });
+      });
+      show(0);
+    }
+    // "+N rute": tampilkan semua rute di halte itu (semua link tetap ada di HTML untuk SEO)
+    document.querySelectorAll(".stop-item").forEach(item => {
+      const more = item.querySelector(".more-toggle");
+      const extra = item.querySelector(".extra-routes");
+      if (!more || !extra) return;
+      more.hidden = false;
+      more.addEventListener("click", () => { extra.hidden = false; more.hidden = true; });
+      item.querySelector(".less-toggle").addEventListener("click", () => { extra.hidden = true; more.hidden = false; });
+    });
+  </script>
 </BaseLayout>

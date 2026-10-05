@@ -72,21 +72,28 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       .grid .card { margin: 0; }
       .route-meta-card { display: flex; flex-wrap: wrap; gap: 1.5rem; background: var(--card-bg); border: 1px solid var(--border-color);
         border-radius: var(--radius); padding: 1rem 1.4rem; margin: 1rem 0 1.5rem; }
-      .meta-item { font-size: 0.9rem; color: var(--text-sub); }
+      .meta-item { font-size: 0.9rem; color: var(--text-sub); display: flex; flex-direction: column; align-items: center; justify-content: center; }
       .meta-item b { display: block; color: var(--text-main); font-size: 1rem; }
+      .meta-icon { width: 16px; height: 16px; stroke: var(--text-sub); margin-bottom: 4px;}
       .dir-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius);
         padding: 1.2rem 1.4rem; margin-bottom: 1.5rem; }
       .dir-card h2 { margin-top: 0; }
       .route-map { width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 1rem; }
-      .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
-      .stop-item { position: relative; padding: 0.55rem 0 0.55rem 2rem; }
-      .timeline::before { content: ""; position: absolute; left: 7px; top: 14px; bottom: 14px; width: 0;
-        border-left: 3px solid var(--route-color, var(--primary)); }
-      .timeline.nonbrt-line::before { border-left-style: dashed; }
-      .stop-dot-brt, .stop-dot-nonbrt { position: absolute; left: 0; top: 0.95rem; width: 17px; height: 17px; border-radius: 50%;
-        background: var(--card-bg); border: 3px solid var(--route-color, var(--primary)); }
-      .stop-dot-nonbrt { width: 11px; height: 11px; left: 3px; top: 1.05rem; background: var(--route-color, var(--primary)); border: 0; }
-      .stop-list-name { font-weight: 600; color: var(--text-main); }
+      /* Timeline: garis per-item (seperti desain lama) supaya berhenti tepat di titik halte pertama & terakhir */
+      .timeline { position: relative; list-style: none; margin: 0; padding: 0 0 0 24px; display: flex; flex-direction: column; }
+      .stop-item { position: relative; padding: 0 0 18px; }
+      .stop-item::before { content: ""; position: absolute; left: -17px; top: 0; bottom: 0; width: 4px;
+        background-color: var(--route-color, var(--primary)); z-index: 1; }
+      .stop-item:first-child::before { top: 10px; }
+      .stop-item:last-child::before { bottom: calc(100% - 10px); }
+      .stop-item:last-child { padding-bottom: 0; }
+      .stop-dot-brt { position: absolute; left: -22px; top: 3px; width: 14px; height: 14px; border-radius: 50%;
+        background-color: var(--card-bg); border: 4px solid var(--route-color, var(--primary)); z-index: 2; }
+      .stop-dot-nonbrt { position: absolute; left: -16px; top: 8px; width: 10px; height: 4px; border-radius: 2px;
+        background-color: var(--route-color, var(--primary)); z-index: 2; }
+      .stop-item.is-nonbrt-item:first-child .stop-dot-nonbrt,
+      .stop-item.is-nonbrt-item:last-child .stop-dot-nonbrt { top: 8px; left: -24px; width: 18px; }
+      .stop-list-name { display: block; font-size: 0.95rem; line-height: 20px; margin-bottom: 4px; font-weight: 600; color: var(--text-main); }
       .stop-list-name:hover { color: var(--primary); text-decoration: none; }
       .stop-hero { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.3rem 1.5rem; margin-bottom: 1rem; }
       .search-input { width: 100%; max-width: 520px; padding: 0.75rem 1.1rem; border: 1px solid var(--border-color); border-radius: 999px;
