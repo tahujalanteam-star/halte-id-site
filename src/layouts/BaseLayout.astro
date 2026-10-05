@@ -1,5 +1,7 @@
 ---
 const { title, description, canonicalPath = "/" } = Astro.props;
+const path = Astro.url.pathname;
+const isActive = (p) => (p === "/" ? path === "/" : path === p || path.startsWith(p + "/"));
 const siteUrl = Astro.site ? Astro.site.toString().replace(/\/$/, "") : "";
 const canonicalUrl = `${siteUrl}${canonicalPath}`;
 const pageTitle = title ? `${title} | halte.id` : "halte.id — Panduan Rute & Halte Bus Jakarta";
@@ -9,7 +11,7 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
 <html lang="id">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{pageTitle}</title>
     <meta name="description" content={pageDescription} />
     <link rel="canonical" href={canonicalUrl} />
@@ -71,7 +73,7 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.7rem; }
       .grid .card { margin: 0; }
       .route-meta-card { display: flex; flex-wrap: wrap; gap: 1.5rem; background: var(--card-bg); border: 1px solid var(--border-color);
-        border-radius: var(--radius); padding: 1rem 1.4rem; margin: 1rem 0 1.5rem; }
+        border-radius: var(--radius); padding: 1rem 1.4rem; margin: 1rem 0 1.5rem; justify-content: space-around; }
       .meta-item { font-size: 0.9rem; color: var(--text-sub); display: flex; flex-direction: column; align-items: center; justify-content: center; }
       .meta-item b { display: block; color: var(--text-main); font-size: 1rem; }
       .meta-icon { width: 16px; height: 16px; stroke: var(--text-sub); margin-bottom: 4px;}
@@ -103,6 +105,19 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       .results li { border-bottom: 1px solid var(--border-color); }
       .results a { display: block; padding: 0.6rem 1rem; color: var(--text-main); }
       .lead { color: var(--text-sub); max-width: 640px; }
+      /* Mobile: header ringkas + bottom tab bar */
+      .tabbar { display: none; }
+      @media (max-width: 640px) {
+        nav.site a { display: none; }
+        .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+          background: var(--card-bg); border-top: 1px solid var(--border-color); padding-bottom: env(safe-area-inset-bottom); }
+        .tabbar a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 7px;
+          color: var(--text-sub); font-size: 0.7rem; font-weight: 600; }
+        .tabbar a:hover { text-decoration: none; }
+        .tabbar a[aria-current="page"] { color: var(--primary); }
+        .tabbar svg { width: 22px; height: 22px; }
+        body { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+      }
     </style>
   </head>
   <body>
@@ -112,6 +127,7 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
         <nav class="site">
           <a href="/rute">Rute</a>
           <a href="/halte">Halte</a>
+          <a href="/panduan">Panduan</a>
           <a href="/tentang">Tentang</a>
           <button id="theme-toggle" type="button" aria-label="Ganti tema">◐</button>
         </nav>
@@ -120,11 +136,18 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
     <main><div class="container"><slot /></div></main>
     <footer class="site">
       <div class="container">
+        <a href="/panduan">Panduan</a>
         <a href="/tentang">Tentang</a>
         <a href="/kebijakan-privasi">Kebijakan Privasi</a>
         <span>&copy; {new Date().getFullYear()} halte.id — Panduan rute &amp; halte bus Jakarta, tidak berafiliasi resmi dengan Transjakarta.</span>
       </div>
     </footer>
+    <nav class="tabbar" aria-label="Navigasi utama">
+      <a href="/" aria-current={isActive("/") ? "page" : undefined}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Beranda</span></a>
+      <a href="/rute" aria-current={isActive("/rute") ? "page" : undefined}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 11h16"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/><path d="M6 17v3M18 17v3"/></svg><span>Rute</span></a>
+      <a href="/halte" aria-current={isActive("/halte") ? "page" : undefined}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span>Halte</span></a>
+      <a href="/panduan" aria-current={isActive("/panduan") ? "page" : undefined}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/></svg><span>Panduan</span></a>
+    </nav>
     <script is:inline>
       document.getElementById("theme-toggle").addEventListener("click", function () {
         var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";

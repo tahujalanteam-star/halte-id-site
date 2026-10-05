@@ -1,0 +1,230 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const steps = [
+  {
+    "title": "Siapkan kartu uang elektronik",
+    "desc": "Semua transportasi publik di Jakarta menggunakan transaksi non-tunai. Gunakan e-money (Mandiri e-Money, BCA Flazz, BRI BRIZZI, BNI TapCash) atau kartu JakLingko."
+  },
+  {
+    "title": "Pahami jenis halte dan stasiun",
+    "desc": "Halte BRT Transjakarta berada di jalur khusus dengan barrier gate. Bus stop non-BRT berada di pinggir jalan tanpa barrier."
+  },
+  {
+    "title": "Cari rute dan transit",
+    "desc": "Gunakan pencarian rute di halte.id untuk mengecek titik integrasi antar-koridor atau perpindahan ke MRT, LRT, dan KRL."
+  },
+  {
+    "title": "Tap in dan tap out",
+    "desc": "Pastikan selalu tap in saat masuk dan tap out saat keluar agar saldo terpotong sesuai tarif terpadu."
+  }
+];
+
+const topics = [
+  {
+    "id": "pembayaran",
+    "title": "Pembayaran & Tiket",
+    "items": [
+      {
+        "title": "Kartu Uang Elektronik (E-Money)",
+        "desc": "Metode utama dan paling direkomendasikan. Kamu bisa menggunakan kartu keluaran bank nasional untuk semua moda transportasi seperti MRT, LRT, KRL, TransJakarta, dan JakLingko.",
+        "tags": [
+          "Mandiri e-Money",
+          "BCA Flazz",
+          "BRI BRIZZI",
+          "BNI TapCash"
+        ]
+      },
+      {
+        "title": "Kartu Khusus Transportasi",
+        "desc": "Dapat dibeli langsung di loket atau mesin tiket otomatis di stasiun KRL dan halte TransJakarta.",
+        "tags": [
+          "Kartu Multi Trip (KMT)",
+          "Kartu JakLingko"
+        ]
+      },
+      {
+        "title": "Pembayaran Digital & QR Code",
+        "desc": "Beberapa moda mendukung tiket digital berbasis aplikasi mobile.",
+        "tags": [
+          "Aplikasi MRTJ",
+          "Aplikasi JakLingko",
+          "QRIS / E-Wallet"
+        ]
+      },
+      {
+        "title": "Tips Saldo Minimal & Top Up",
+        "desc": "Pastikan saldo minimal Rp10.000 sebelum menempelkan kartu di gate. Top up bisa dilakukan via Mobile Banking (HP ber-NFC), minimarket, ATM, atau Vending Machine stasiun/halte."
+      }
+    ]
+  },
+  {
+    "id": "transit",
+    "title": "Transit & Integrasi",
+    "items": [
+      {
+        "title": "Transit Bebas Biaya (BRT TransJakarta)",
+        "desc": "Kamu bisa berpindah antar-koridor di halte integrasi tanpa perlu tap out atau bayar lagi, selama tidak keluar dari area steril halte.",
+        "tags": [
+          "Tanpa Biaya Tambahan",
+          "Dalam Halte Steril"
+        ]
+      },
+      {
+        "title": "Hub Integrasi Utama (CSW & Velbak)",
+        "desc": "Simpul integrasi fisik berbentuk jembatan/bangunan megah yang menghubungkan busway dengan MRT Jakarta atau KRL secara nyaman.",
+        "tags": [
+          "CSW (TJ + MRT)",
+          "Velbak (TJ + KRL)",
+          "Dukuh Atas Hub"
+        ]
+      },
+      {
+        "title": "Tarif Integrasi Maksimal Rp10.000",
+        "desc": "Perjalanan kombinasi (TransJakarta, MRT, LRT) dalam kurun waktu maksimal 180 menit dikenakan tarif terpadu maksimal Rp10.000 jika menggunakan Kartu JakLingko atau aplikasi digital.",
+        "tags": [
+          "Maksimal 180 Menit",
+          "Tarif Terpadu"
+        ]
+      },
+      {
+        "title": "Tips Transit Cepat",
+        "desc": "Selalu ikuti papan penunjuk arah (wayfinding) berwarna di dalam stasiun/halte dan pastikan tetap berjalan di jalur penumpang agar tidak salah keluar gate."
+      }
+    ]
+  },
+  {
+    "id": "halte-stasiun",
+    "title": "Halte & Stasiun",
+    "items": [
+      {
+        "title": "Perbedaan Halte BRT & Bus Stop Non-BRT",
+        "desc": "Halte BRT TransJakarta berada di jalur khusus (pintu tinggi) dengan barrier gate. Bus stop non-BRT berada di pinggir jalan biasa (pintu rendah) tanpa barrier gate.",
+        "tags": [
+          "Halte BRT (Pintu Tinggi)",
+          "Bus Stop Non-BRT (Pintu Rendah)"
+        ]
+      },
+      {
+        "title": "Fasilitas Aksesibilitas & Ramah Disabilitas",
+        "desc": "Sebagian besar stasiun MRT, LRT, dan halte BRT modern sudah dilengkapi ramp, lift prioritas, ubin pemandu (guiding block), dan toilet disabilitas.",
+        "tags": [
+          "Lift Prioritas",
+          "Ramp",
+          "Guiding Block"
+        ]
+      },
+      {
+        "title": "Area Komersial & Fasilitas Umum",
+        "desc": "Stasiun integrasi utama menyediakan mesin ATM, minimarket, musala, toilet umum, dan area duduk yang nyaman.",
+        "tags": [
+          "Toilet & Musala",
+          "Minimarket",
+          "Vending Machine"
+        ]
+      },
+      {
+        "title": "Etika Antre di Halte & Stasiun",
+        "desc": "Dahulukan penumpang yang keluar dari bus/kereta. Berdirilah di belakang garis kuning penanda antrean di platform."
+      }
+    ]
+  },
+  {
+    "id": "mrt-lrt-krl",
+    "title": "MRT, LRT & KRL Commuter",
+    "items": [
+      {
+        "title": "KRL Commuter Line",
+        "desc": "Kereta komuter jarak jauh yang menghubungkan Jakarta dengan Jabodetabek. Sangat cepat dan ekonomis untuk perjalanan antar-wilayah.",
+        "tags": [
+          "Antar-Kota & Suburb",
+          "Ekonomis",
+          "Frekuensi Tinggi"
+        ]
+      },
+      {
+        "title": "MRT Jakarta (Jalur Ratangga)",
+        "desc": "Moda transportasi cepat berbasis rel melayang dan bawah tanah yang menghubungkan Lebak Bulus hingga Bundaran HI.",
+        "tags": [
+          "Bawah Tanah & Melayang",
+          "Sangat Tepat Waktu"
+        ]
+      },
+      {
+        "title": "LRT Jabodebek & LRT Jakarta",
+        "desc": "Kereta ringan otomatis tanpa masinis yang melayani rute Jakarta, Depok, dan Bekasi serta koridor lokal Kelapa Gading.",
+        "tags": [
+          "Tanpa Masinis",
+          "Konektivitas Suburb"
+        ]
+      },
+      {
+        "title": "Ketentuan Kereta Khusus Wanita (KKW)",
+        "desc": "Kereta paling depan dan paling belakang pada KRL Commuter Line difungsikan khusus untuk penumpang wanita pada jam operasional."
+      }
+    ]
+  }
+];
+---
+<BaseLayout
+  title="Panduan Naik Transjakarta untuk Pemula"
+  description="Panduan naik Transjakarta dan JakLingko: cara bayar dengan e-money, aturan tap in dan tap out, transit gratis antar-koridor, perbedaan halte BRT dan non-BRT, serta integrasi dengan MRT, LRT, dan KRL."
+  canonicalPath="/panduan"
+>
+  <h1>Panduan Naik Transjakarta &amp; Transportasi Jakarta</h1>
+  <p class="lead">
+    Baru pertama kali naik bus di Jakarta? Berikut cara memakai halte.id dan hal-hal dasar yang perlu
+    diketahui sebelum naik Transjakarta, JakLingko, MRT, LRT, dan KRL.
+  </p>
+
+  <nav class="topic-nav" aria-label="Topik panduan">
+    <a href="#langkah">4 Langkah Awal</a>
+    {topics.map(t => <a href={`#${t.id}`}>{t.title}</a>)}
+  </nav>
+
+  <section id="langkah" class="dir-card">
+    <h2>Baru Pertama di Jakarta? Ikuti 4 Langkah Ini</h2>
+    <ol class="steps">
+      {steps.map(st => (
+        <li><strong>{st.title}</strong><p>{st.desc}</p></li>
+      ))}
+    </ol>
+    <p>Siap mencari rute? Buka <a href="/rute">daftar rute</a> atau <a href="/halte">daftar halte</a>.</p>
+  </section>
+
+  {topics.map(t => (
+    <section id={t.id} class="dir-card">
+      <h2>{t.title}</h2>
+      {t.items.map(item => (
+        <div class="topic-item">
+          <h3>{item.title}</h3>
+          <p>{item.desc}</p>
+          {item.tags && (
+            <div class="tags">{item.tags.map(tag => <span class="tag">{tag}</span>)}</div>
+          )}
+        </div>
+      ))}
+    </section>
+  ))}
+
+  <p class="lead" style="margin-top:1.5rem;">
+    Informasi tarif dan aturan dapat berubah sewaktu-waktu. Untuk kepastian, rujuk pengumuman resmi
+    Transjakarta, MRT Jakarta, LRT, dan KAI Commuter.
+  </p>
+
+  <style>
+    .topic-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.25rem 0 1.5rem; }
+    .topic-nav a { border: 1px solid var(--border-color); background: var(--card-bg); border-radius: 999px;
+      padding: 0.35rem 0.9rem; font-size: 0.85rem; font-weight: 600; }
+    .topic-nav a:hover { border-color: var(--primary); text-decoration: none; }
+    section[id] { scroll-margin-top: 80px; }
+    .steps { padding-left: 1.2rem; margin: 0 0 1rem; }
+    .steps li { margin-bottom: 0.9rem; }
+    .steps p, .topic-item p { margin: 0.2rem 0 0; color: var(--text-sub); }
+    .topic-item { padding: 0.9rem 0; border-top: 1px solid var(--border-color); }
+    .topic-item:first-of-type { border-top: 0; padding-top: 0; }
+    .topic-item h3 { margin: 0; font-size: 1rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+    .tag { background: var(--badge-bg); color: var(--text-sub); border-radius: 8px; padding: 0.15rem 0.6rem; font-size: 0.75rem; font-weight: 600; }
+  </style>
+</BaseLayout>

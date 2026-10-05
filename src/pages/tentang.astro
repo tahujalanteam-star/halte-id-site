@@ -1,15 +1,60 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+
+// Isi dengan alamat email kontak publik (mis. "halo@domainanda.id") agar bagian
+// "Hubungi Kami" muncul. Kosongkan kalau belum mau menampilkan kontak.
+const CONTACT_EMAIL = "tahujalanteam@gmail.com";
 ---
-<BaseLayout title="Tentang" canonicalPath="/tentang">
+<BaseLayout
+  title="Tentang halte.id"
+  description="halte.id adalah panduan independen rute dan halte Transjakarta & JakLingko di Jakarta: tujuan situs, sumber data, dan cara melaporkan kesalahan data."
+  canonicalPath="/tentang"
+>
   <h1>Tentang halte.id</h1>
-  <p>
-    halte.id adalah panduan independen rute dan halte Transjakarta &amp; JakLingko di Jakarta.
-    Situs ini tidak berafiliasi resmi dengan PT Transportasi Jakarta (Transjakarta) atau Dinas
-    Perhubungan DKI Jakarta.
+  <p class="lead">
+    halte.id adalah panduan independen untuk rute dan halte Transjakarta &amp; JakLingko di Jakarta.
+    Tujuannya sederhana: membantu warga dan pendatang menemukan bus yang tepat, tahu di halte mana harus
+    naik, turun, atau berpindah rute.
   </p>
-  <p>
-    [Ganti dengan tulisan Anda sendiri: tujuan situs ini dibuat, sumber data, seberapa sering
-    data diperbarui, dan cara menghubungi Anda kalau ada kesalahan data.]
-  </p>
+
+  <div class="dir-card">
+    <h2>Apa yang Ada di Sini</h2>
+    <ul>
+      <li><a href="/rute">Daftar rute</a>: urutan halte pemberhentian tiap rute, jam operasi, tarif, dan peta jalur.</li>
+      <li><a href="/halte">Daftar halte</a>: rute apa saja yang berhenti di setiap halte.</li>
+      <li><a href="/panduan">Panduan</a>: cara membayar, tap in dan tap out, transit, serta perbedaan jenis halte.</li>
+    </ul>
+  </div>
+
+  <div class="dir-card">
+    <h2>Sumber dan Pembaruan Data</h2>
+    <p>
+      Data halte, urutan pemberhentian, dan jalur rute dikumpulkan dan dirapikan secara manual oleh tim
+      halte.id, lalu dipublikasikan sebagai halaman statis. Perubahan rute di lapangan bisa terjadi lebih
+      cepat daripada pembaruan kami, jadi mohon cek papan informasi di halte atau pengumuman resmi
+      operator sebelum bepergian.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Independen dan Tidak Resmi</h2>
+    <p>
+      halte.id tidak berafiliasi dengan PT Transportasi Jakarta (Transjakarta), Dinas Perhubungan DKI
+      Jakarta, MRT Jakarta, atau operator transportasi lainnya. Nama dan merek yang disebut adalah milik
+      masing-masing pemiliknya dan disebut hanya untuk keperluan informasi.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Menemukan Kesalahan Data?</h2>
+    <p>
+      Kami menghargai koreksi dari pengguna: halte yang salah nama atau urutan, rute yang sudah berubah,
+      atau jalur peta yang melenceng.
+      {CONTACT_EMAIL
+        ? <> Kirim ke <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> dengan menyebut nomor rute atau nama halte yang dimaksud.</>
+        : <>Informasi kontak akan segera ditambahkan.</>}
+    </p>
+  </div>
+
+  <p class="lead">Baca juga <a href="/kebijakan-privasi">Kebijakan Privasi</a> kami.</p>
 </BaseLayout>

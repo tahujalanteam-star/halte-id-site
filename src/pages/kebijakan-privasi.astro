@@ -1,25 +1,110 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+
+// Isi dengan alamat email kontak publik agar bagian "Kontak" muncul.
+const CONTACT_EMAIL = "tahujalanteam@gmail.com";
+const UPDATED = "5 Oktober 2026";
 ---
-<BaseLayout title="Kebijakan Privasi" canonicalPath="/kebijakan-privasi">
+<BaseLayout
+  title="Kebijakan Privasi"
+  description="Kebijakan privasi halte.id: data yang dikumpulkan, penggunaan cookies, iklan Google AdSense, peta Mapbox, dan hak pengunjung."
+  canonicalPath="/kebijakan-privasi"
+>
   <h1>Kebijakan Privasi</h1>
-  <p>
-    [Placeholder — lengkapi sebelum submit ke Google AdSense. Minimal perlu mencakup:]
-  </p>
-  <ul>
-    <li>Apakah situs ini pakai cookies, dan untuk apa (analytics, iklan).</li>
-    <li>
-      Pemberitahuan bahwa pihak ketiga (termasuk Google) bisa memakai cookies untuk menampilkan
-      iklan berdasarkan kunjungan Anda ke situs ini dan situs lain — sertakan tautan ke
-      <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">
-        halaman kebijakan iklan Google
-      </a>.
-    </li>
-    <li>Data apa saja yang dikumpulkan (kalau ada form kontak/komentar nantinya).</li>
-    <li>Cara pengguna menghubungi Anda terkait privasi.</li>
-  </ul>
-  <p style="color:#64748b;font-size:0.9rem;">
-    Catatan: ini bukan nasihat hukum. Sesuaikan isi halaman ini dengan praktik nyata situs Anda
-    dan persyaratan AdSense terbaru sebelum mengajukan approval.
-  </p>
+  <p class="lead">Terakhir diperbarui: {UPDATED}</p>
+
+  <div class="dir-card">
+    <h2>Ringkasan</h2>
+    <p>
+      halte.id adalah situs informasi rute dan halte bus. Kami tidak menyediakan akun, formulir
+      pendaftaran, atau kolom komentar, dan kami tidak meminta data pribadi Anda untuk memakai situs ini.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Data yang Dikumpulkan Otomatis</h2>
+    <p>
+      Seperti situs web pada umumnya, server dan penyedia layanan yang kami gunakan dapat mencatat data
+      teknis kunjungan, misalnya alamat IP, jenis peramban dan perangkat, halaman yang dibuka, serta waktu
+      kunjungan. Data ini dipakai untuk menjaga keamanan dan kinerja situs, serta memahami halaman mana yang
+      paling berguna.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Penyimpanan di Perangkat Anda</h2>
+    <p>
+      Situs ini menyimpan satu pengaturan sederhana di peramban Anda, yaitu pilihan tema terang atau gelap.
+      Pengaturan ini hanya tersimpan di perangkat Anda dan tidak dikirim ke server kami.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Cookies dan Iklan Pihak Ketiga</h2>
+    <p>
+      Kami dapat menampilkan iklan melalui Google AdSense. Google dan mitra iklannya, sebagai pihak ketiga,
+      menggunakan cookies atau teknologi serupa untuk menayangkan iklan berdasarkan kunjungan Anda ke situs
+      ini dan situs lain di internet.
+    </p>
+    <ul>
+      <li>
+        Pemakaian cookies iklan oleh Google memungkinkan Google dan mitranya menayangkan iklan kepada Anda
+        berdasarkan kunjungan ke situs ini dan/atau situs lain.
+      </li>
+      <li>
+        Anda dapat mengelola atau menonaktifkan iklan yang dipersonalisasi melalui
+        <a href="https://adssettings.google.com" target="_blank" rel="noopener">Pengaturan Iklan Google</a>.
+      </li>
+      <li>
+        Penjelasan lengkap tentang cara Google memakai data ada di
+        <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">kebijakan iklan Google</a>.
+      </li>
+      <li>
+        Anda juga dapat menghapus atau memblokir cookies lewat pengaturan peramban Anda. Beberapa fitur
+        situs tetap berfungsi tanpa cookies.
+      </li>
+    </ul>
+  </div>
+
+  <div class="dir-card">
+    <h2>Peta dan Layanan Pihak Ketiga Lainnya</h2>
+    <p>
+      Peta jalur rute di halaman rute ditampilkan sebagai gambar dari Mapbox. Saat gambar itu dimuat,
+      peramban Anda terhubung ke server Mapbox sehingga Mapbox menerima data teknis seperti alamat IP.
+      Situs ini juga dihosting pada infrastruktur Cloudflare. Pemakaian data oleh layanan tersebut diatur
+      oleh kebijakan privasi masing-masing penyedia.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Tautan ke Situs Lain</h2>
+    <p>
+      Halaman kami dapat memuat tautan ke situs lain. Kami tidak mengendalikan isi maupun praktik privasi
+      situs tersebut, dan sebaiknya Anda membaca kebijakan privasi masing-masing.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Anak-anak</h2>
+    <p>
+      Situs ini ditujukan untuk umum dan tidak secara sengaja mengumpulkan data pribadi dari anak-anak.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Perubahan Kebijakan</h2>
+    <p>
+      Kebijakan ini dapat diperbarui sewaktu-waktu. Tanggal pembaruan terakhir tercantum di bagian atas
+      halaman ini.
+    </p>
+  </div>
+
+  <div class="dir-card">
+    <h2>Kontak</h2>
+    <p>
+      {CONTACT_EMAIL
+        ? <>Pertanyaan tentang kebijakan ini dapat dikirim ke <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</>
+        : <>Informasi kontak akan segera ditambahkan.</>}
+    </p>
+  </div>
 </BaseLayout>
