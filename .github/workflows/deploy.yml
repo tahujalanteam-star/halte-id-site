@@ -15,7 +15,7 @@ jobs:
 
     env:
       DATA_DIR: data-real
-      SITE_URL: https://halte-id.pages.dev
+      SITE_URL: https://halte.id
       PUBLIC_MAPBOX_TOKEN: ${{ secrets.PUBLIC_MAPBOX_TOKEN }}
       
     steps:
