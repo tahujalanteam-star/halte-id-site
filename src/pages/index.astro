@@ -18,25 +18,20 @@ const searchIndex = [
   canonicalPath="/"
 >
   <h1>Panduan Rute &amp; Halte Bus Jakarta</h1>
-  <p style="color:#475569;max-width:640px;">
+  <p class="lead">
     Cari informasi lengkap rute Transjakarta dan JakLingko: jadwal keberangkatan, tarif, daftar halte pemberhentian,
     serta peta jalur tiap koridor — semua dalam satu tempat.
   </p>
 
-  <input
-    id="site-search"
-    type="search"
-    placeholder="Cari nomor rute atau nama halte..."
-    style="width:100%;max-width:480px;padding:0.7rem 0.9rem;border:1px solid #e2e8f0;border-radius:0.5rem;font-size:1rem;margin:1rem 0;"
-  />
-  <ul id="search-results" style="list-style:none;padding:0;margin:0 0 1.5rem;max-width:480px;"></ul>
+  <input id="site-search" class="search-input" type="search" placeholder="Cari nomor rute atau nama halte..." />
+  <ul id="search-results" class="results"></ul>
 
   <h2>Rute Populer</h2>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.6rem;">
+  <div class="grid">
     {popularRoutes.map(r => (
-      <a href={`/rute/${routeSlug(r)}`} class="card" style="display:flex;align-items:center;gap:0.6rem;margin:0;">
-        <span class="badge" style={`background:${r.route_color || "#334155"};`}>{r.id}</span>
-        <span style="font-size:0.9rem;">{r.route_name}</span>
+      <a href={`/rute/${routeSlug(r)}`} class="card">
+        <span class="badge-bus" style={`background:${r.route_color || "#334155"};`}>{r.id}</span>
+        <span>{r.route_name}</span>
       </a>
     ))}
   </div>
@@ -56,11 +51,8 @@ const searchIndex = [
         .slice(0, 8)
         .forEach(item => {
           const li = document.createElement("li");
-          li.style.borderBottom = "1px solid #e2e8f0";
           const a = document.createElement("a");
           a.href = item.url;
-          a.style.display = "block";
-          a.style.padding = "0.5rem 0";
           a.textContent = `${item.type === "rute" ? "🚌" : "📍"} ${item.label}`;
           li.appendChild(a);
           results.appendChild(li);

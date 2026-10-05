@@ -10,16 +10,29 @@ const routes = loadRoutesIndex().slice().sort((a, b) => compareCodes(a.id, b.id)
   canonicalPath="/rute"
 >
   <h1>Daftar Rute</h1>
-  <p>{routes.length} rute tersedia.</p>
-  <div>
+  <p class="lead">{routes.length} rute tersedia.</p>
+  <input id="route-filter" class="search-input" type="search" placeholder="Cari nomor atau nama rute..." />
+  <div id="route-list">
     {routes.map(r => (
-      <a href={`/rute/${routeSlug(r)}`} class="card" style="display:flex;align-items:center;gap:0.75rem;">
-        <span class="badge" style={`background:${r.route_color || "#334155"};font-size:0.9rem;`}>{r.id}</span>
+      <a href={`/rute/${routeSlug(r)}`} class="card" data-name={`${r.id} ${r.route_name}`.toLowerCase()}>
+        <span class="badge-bus" style={`background:${r.route_color || "#334155"};`}>{r.id}</span>
         <span>
-          <div style="font-weight:600;color:#0f172a;">{r.route_name}</div>
-          <div style="font-size:0.85rem;color:#64748b;">{r.stops_count} halte &middot; {r.start_stop} s/d {r.end_stop}</div>
+          <strong>{r.route_name}</strong>
+          <div class="sub">{r.stops_count} halte &middot; {r.start_stop} s/d {r.end_stop}</div>
         </span>
       </a>
     ))}
   </div>
+  <p id="route-empty" class="lead" hidden>Tidak ada rute yang cocok.</p>
+  <script>
+    const input = document.getElementById("route-filter");
+    const items = Array.from(document.querySelectorAll("#route-list [data-name]"));
+    const empty = document.getElementById("route-empty");
+    input.addEventListener("input", () => {
+      const q = input.value.trim().toLowerCase();
+      let n = 0;
+      items.forEach(el => { const m = el.dataset.name.includes(q); el.hidden = !m; if (m) n++; });
+      empty.hidden = n !== 0;
+    });
+  </script>
 </BaseLayout>

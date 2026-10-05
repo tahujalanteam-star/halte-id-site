@@ -19,50 +19,82 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
     <meta property="og:url" content={canonicalUrl} />
     <meta name="twitter:card" content="summary" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <style>
+    <script is:inline>
+      try {
+        var t = localStorage.getItem("theme");
+        if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
+    <style is:global>
       :root {
-        --ink: #0f172a;
-        --ink-light: #475569;
-        --accent: #d90429;
-        --border: #e2e8f0;
-        --bg: #f8fafc;
+        --bg-color: #f4f5f7; --card-bg: #ffffff; --primary: #2563eb; --primary-dark: #1d4ed8;
+        --text-main: #1f2937; --text-sub: #6b7280; --border-color: #e5e7eb; --badge-bg: #ededed;
+        --radius: 22px;
+      }
+      [data-theme="dark"] {
+        --bg-color: #0f172a; --card-bg: #1e293b; --primary: #3b82f6; --primary-dark: #2563eb;
+        --text-main: #f8fafc; --text-sub: #94a3b8; --border-color: #334155; --badge-bg: #334155;
       }
       * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        color: var(--ink);
-        background: var(--bg);
-        line-height: 1.55;
-      }
-      a { color: var(--accent); text-decoration: none; }
+      body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: var(--text-main); background: var(--bg-color); line-height: 1.55; }
+      a { color: var(--primary); text-decoration: none; }
       a:hover { text-decoration: underline; }
-      .container { max-width: 960px; margin: 0 auto; padding: 0 1.25rem; }
-      header.site { background: var(--ink); color: #fff; padding: 1rem 0; }
-      header.site .container { display: flex; align-items: center; justify-content: space-between; }
-      header.site a.logo { color: #fff; font-weight: 700; font-size: 1.1rem; }
-      header.site a.logo span { color: var(--accent); }
-      nav.site a { color: #cbd5e1; margin-left: 1.25rem; font-size: 0.9rem; }
-      main { padding: 2rem 0 3rem; min-height: 60vh; }
-      footer.site { border-top: 1px solid var(--border); padding: 1.5rem 0; font-size: 0.85rem; color: var(--ink-light); }
-      footer.site a { color: var(--ink-light); margin-right: 1rem; }
+      .container { max-width: 880px; margin: 0 auto; padding: 0 1.25rem; }
+      header.site { background: var(--card-bg); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 10; }
+      header.site .container { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+      header.site a.logo { color: var(--text-main); font-weight: 800; font-size: 1.15rem; }
+      header.site a.logo span { color: var(--primary); }
+      nav.site { display: flex; align-items: center; gap: 1.1rem; font-size: 0.9rem; }
+      nav.site a { color: var(--text-sub); font-weight: 500; }
+      nav.site a:hover { color: var(--primary); text-decoration: none; }
+      #theme-toggle { border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main);
+        border-radius: 999px; width: 36px; height: 36px; cursor: pointer; font-size: 1rem; }
+      main { padding: 1.75rem 0 3rem; min-height: 60vh; }
+      footer.site { border-top: 1px solid var(--border-color); padding: 1.5rem 0; font-size: 0.85rem; color: var(--text-sub); }
+      footer.site a { color: var(--text-sub); margin-right: 1rem; }
       h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
-      h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; }
-      .badge {
-        display: inline-flex; align-items: center; justify-content: center;
-        font-size: 0.75rem; font-weight: 600; color: #fff;
-        padding: 0.15rem 0.5rem; border-radius: 0.3rem; margin: 0 0.25rem 0.25rem 0;
-      }
-      .card { background: #fff; border: 1px solid var(--border); border-radius: 0.6rem; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
-      .meta-row { display: flex; gap: 1.5rem; flex-wrap: wrap; color: var(--ink-light); font-size: 0.9rem; margin: 0.75rem 0 1.5rem; }
-      ol.stop-list { list-style: none; margin: 0; padding: 0; border-left: 3px solid var(--border); }
-      ol.stop-list li { position: relative; padding: 0.6rem 0 0.6rem 1.25rem; }
-      ol.stop-list li::before {
-        content: ""; position: absolute; left: -7px; top: 1.1rem;
-        width: 11px; height: 11px; border-radius: 50%; background: #fff; border: 3px solid var(--accent);
-      }
-      ol.stop-list li a.stop-name { font-weight: 600; color: var(--ink); }
-      ol.stop-list li a.stop-name:hover { color: var(--accent); }
+      h2 { font-size: 1.1rem; margin: 2rem 0 0.75rem; }
+      .crumb { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 0.75rem; }
+      .badge-bus { display: inline-flex; align-items: center; justify-content: center; min-width: 2.4rem;
+        font-weight: 700; font-size: 0.85rem; color: #fff; padding: 0.2rem 0.6rem; border-radius: 12px; }
+      .badge-sub { display: inline-block; font-size: 0.7rem; font-weight: 600; color: #fff;
+        padding: 0.1rem 0.45rem; border-radius: 8px; margin: 0 0.25rem 0.25rem 0; }
+      .badge-sub:hover { text-decoration: none; opacity: 0.85; }
+      .badge-more { background: var(--badge-bg); color: var(--text-sub); }
+      .card { display: flex; align-items: center; gap: 0.75rem; background: var(--card-bg); border: 1px solid var(--border-color);
+        border-radius: var(--radius); padding: 0.9rem 1.2rem; margin-bottom: 0.7rem; color: var(--text-main); }
+      a.card:hover { text-decoration: none; border-color: var(--primary); }
+      .card .sub { font-size: 0.85rem; color: var(--text-sub); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.7rem; }
+      .grid .card { margin: 0; }
+      .route-meta-card { display: flex; flex-wrap: wrap; gap: 1.5rem; background: var(--card-bg); border: 1px solid var(--border-color);
+        border-radius: var(--radius); padding: 1rem 1.4rem; margin: 1rem 0 1.5rem; }
+      .meta-item { font-size: 0.9rem; color: var(--text-sub); }
+      .meta-item b { display: block; color: var(--text-main); font-size: 1rem; }
+      .dir-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius);
+        padding: 1.2rem 1.4rem; margin-bottom: 1.5rem; }
+      .dir-card h2 { margin-top: 0; }
+      .route-map { width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 1rem; }
+      .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+      .stop-item { position: relative; padding: 0.55rem 0 0.55rem 2rem; }
+      .timeline::before { content: ""; position: absolute; left: 7px; top: 14px; bottom: 14px; width: 0;
+        border-left: 3px solid var(--route-color, var(--primary)); }
+      .timeline.nonbrt-line::before { border-left-style: dashed; }
+      .stop-dot-brt, .stop-dot-nonbrt { position: absolute; left: 0; top: 0.95rem; width: 17px; height: 17px; border-radius: 50%;
+        background: var(--card-bg); border: 3px solid var(--route-color, var(--primary)); }
+      .stop-dot-nonbrt { width: 11px; height: 11px; left: 3px; top: 1.05rem; background: var(--route-color, var(--primary)); border: 0; }
+      .stop-list-name { font-weight: 600; color: var(--text-main); }
+      .stop-list-name:hover { color: var(--primary); text-decoration: none; }
+      .stop-hero { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.3rem 1.5rem; margin-bottom: 1rem; }
+      .search-input { width: 100%; max-width: 520px; padding: 0.75rem 1.1rem; border: 1px solid var(--border-color); border-radius: 999px;
+        font-size: 1rem; background: var(--card-bg); color: var(--text-main); margin: 1rem 0; }
+      .search-input:focus { outline: 2px solid var(--primary); border-color: transparent; }
+      .results { list-style: none; padding: 0; margin: 0 0 1.5rem; max-width: 520px; background: var(--card-bg); border-radius: 16px; }
+      .results li { border-bottom: 1px solid var(--border-color); }
+      .results a { display: block; padding: 0.6rem 1rem; color: var(--text-main); }
+      .lead { color: var(--text-sub); max-width: 640px; }
     </style>
   </head>
   <body>
@@ -70,23 +102,27 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       <div class="container">
         <a class="logo" href="/">halte<span>.id</span></a>
         <nav class="site">
-          <a href="/rute">Daftar Rute</a>
-          <a href="/halte">Daftar Halte</a>
+          <a href="/rute">Rute</a>
+          <a href="/halte">Halte</a>
           <a href="/tentang">Tentang</a>
+          <button id="theme-toggle" type="button" aria-label="Ganti tema">◐</button>
         </nav>
       </div>
     </header>
-    <main>
-      <div class="container">
-        <slot />
-      </div>
-    </main>
+    <main><div class="container"><slot /></div></main>
     <footer class="site">
       <div class="container">
         <a href="/tentang">Tentang</a>
         <a href="/kebijakan-privasi">Kebijakan Privasi</a>
-        <span>&copy; {new Date().getFullYear()} halte.id — Panduan rute & halte bus Jakarta, tidak berafiliasi resmi dengan Transjakarta.</span>
+        <span>&copy; {new Date().getFullYear()} halte.id — Panduan rute &amp; halte bus Jakarta, tidak berafiliasi resmi dengan Transjakarta.</span>
       </div>
     </footer>
+    <script is:inline>
+      document.getElementById("theme-toggle").addEventListener("click", function () {
+        var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem("theme", next); } catch (e) {}
+      });
+    </script>
   </body>
 </html>

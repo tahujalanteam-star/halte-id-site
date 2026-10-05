@@ -6,6 +6,7 @@ import {
   loadRoute,
   loadStopServices,
   loadJalur,
+  getDirectionGeometry,
   routeSlug,
   buildRouteLookup,
   routesForStop,
@@ -32,12 +33,13 @@ const operatingDays = route.timetable?.operating_days;
 
 const PUBLIC_MAPBOX_TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 
-function staticMapUrl(dirId) {
-  if (!PUBLIC_MAPBOX_TOKEN || !jalur?.directions?.[dirId]?.geometry?.coordinates?.length) return null;
+function staticMapUrl(dirId, dirIndex) {
+  const geometry = getDirectionGeometry(jalur, dirId, dirIndex);
+  if (!PUBLIC_MAPBOX_TOKEN || !geometry) return null;
   const line = {
     type: "Feature",
     properties: { stroke: route.route_color || "#D90429", "stroke-width": 4 },
-    geometry: jalur.directions[dirId].geometry,
+    geometry,
   };
   const encoded = encodeURIComponent(JSON.stringify(line));
   return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/geojson(${encoded})/auto/800x360?padding=30&access_token=${PUBLIC_MAPBOX_TOKEN}`;
@@ -48,36 +50,29 @@ function staticMapUrl(dirId) {
   description={`Jadwal, tarif, dan daftar halte pemberhentian rute ${route.id} ${route.route_number}. ${operatingDays || ""} ${schedule ? `mulai ${schedule.first_departure} sampai ${schedule.last_departure}.` : ""}`}
   canonicalPath={`/rute/${routeSlug(summary)}`}
 >
-  <nav style="font-size:0.85rem;color:#64748b;margin-bottom:0.75rem;">
-    <a href="/rute">Daftar Rute</a> / <span>{route.id}</span>
-  </nav>
+  <div class="crumb"><a href="/rute">Daftar Rute</a> / <span>{route.id}</span></div>
 
-  <div style={`display:flex;align-items:center;gap:0.75rem;`}>
-    <span class="badge" style={`background:${route.route_color || "#334155"};font-size:1rem;padding:0.3rem 0.7rem;`}>{route.id}</span>
+  <div style="display:flex;align-items:center;gap:0.75rem;">
+    <span class="badge-bus" style={`background:${route.route_color || "#334155"};font-size:1.05rem;`}>{route.id}</span>
     <h1 style="margin:0;">{route.route_number}</h1>
   </div>
 
-  <div class="meta-row">
-    {operatingDays && <span>📅 {operatingDays}</span>}
-    {schedule && <span>🕐 {schedule.first_departure} – {schedule.last_departure}</span>}
+  <div class="route-meta-card">
+    {operatingDays && <div class="meta-item">Hari operasi<b>{operatingDays}</b></div>}
+    {schedule && <div class="meta-item">Jam operasi<b>{schedule.first_departure} – {schedule.last_departure}</b></div>}
+    <div class="meta-item">Jumlah halte<b>{summary.stops_count}</b></div>
   </div>
 
-  {directions.map(dir => {
-    const mapUrl = staticMapUrl(dir.id);
+  {directions.map((dir, dirIndex) => {
+    const mapUrl = staticMapUrl(dir.id, dirIndex);
+    const allNonBrt = dir.stop_ids.every(id => stops[id]?.type !== "brt");
     return (
-      <section style="margin-bottom:2.5rem;">
+      <section class="dir-card">
         <h2>{dir.title}</h2>
         {mapUrl && (
-          <img
-            src={mapUrl}
-            alt={`Peta jalur rute ${route.id} arah ${dir.title}`}
-            width="800"
-            height="360"
-            loading="lazy"
-            style="width:100%;height:auto;border-radius:0.6rem;border:1px solid #e2e8f0;margin-bottom:1rem;"
-          />
+          <img class="route-map" src={mapUrl} alt={`Peta jalur rute ${route.id} arah ${dir.title}`} width="800" height="360" loading="lazy" />
         )}
-        <ol class="stop-list">
+        <ol class={`timeline${allNonBrt ? " nonbrt-line" : ""}`} style={`--route-color:${route.route_color || "#2563eb"};`}>
           {dir.stop_ids.map(stopId => {
             const stop = stops[stopId];
             if (!stop) return null;
@@ -85,13 +80,14 @@ function staticMapUrl(dirId) {
             const shown = serving.slice(0, 4);
             const extra = serving.length - shown.length;
             return (
-              <li>
-                <a class="stop-name" href={`/halte/${stopId}`}>{stop.name}</a>
+              <li class="stop-item">
+                <span class={stop.type === "brt" ? "stop-dot-brt" : "stop-dot-nonbrt"}></span>
+                <a class="stop-list-name" href={`/halte/${stopId}`}>{stop.name}</a>
                 <div>
                   {shown.map(r => (
-                    <a href={`/rute/${r.slug}`} class="badge" style={`background:${r.route_color || "#64748b"};`}>{r.id}</a>
+                    <a href={`/rute/${r.slug}`} class="badge-sub" style={`background:${r.route_color || "#64748b"};`}>{r.id}</a>
                   ))}
-                  {extra > 0 && <span class="badge" style="background:#e2e8f0;color:#334155;">+{extra} rute</span>}
+                  {extra > 0 && <span class="badge-sub badge-more">+{extra} rute</span>}
                 </div>
               </li>
             );

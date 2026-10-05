@@ -23,22 +23,22 @@ const typeLabel = stop.type === "brt" ? "Halte BRT" : "Halte Non-BRT";
   description={`Daftar rute Transjakarta & JakLingko yang berhenti di halte ${stop.name}. ${typeLabel}.`}
   canonicalPath={`/halte/${stopId}`}
 >
-  <nav style="font-size:0.85rem;color:#64748b;margin-bottom:0.75rem;">
-    <a href="/halte">Daftar Halte</a> / <span>{stop.name}</span>
-  </nav>
-
-  <span class="badge" style="background:#334155;">{typeLabel}</span>
-  <h1>{stop.name}</h1>
+  <div class="crumb"><a href="/halte">Daftar Halte</a> / <span>{stop.name}</span></div>
+  <div class="stop-hero">
+    <span class="badge-sub" style="background:#475569;">{typeLabel}</span>
+    <h1 style="margin-top:0.4rem;">{stop.name}</h1>
+    <div class="sub" style="color:var(--text-sub);">{serving.length} rute berhenti di halte ini</div>
+  </div>
 
   <h2>Rute yang Berhenti di Sini</h2>
   {serving.length === 0 ? (
-    <p>Belum ada data rute untuk halte ini.</p>
+    <p class="lead">Belum ada data rute untuk halte ini.</p>
   ) : (
     <div>
       {serving.map(r => (
-        <a href={`/rute/${r.slug}`} class="card" style="display:flex;align-items:center;gap:0.75rem;">
-          <span class="badge" style={`background:${r.route_color || "#334155"};font-size:0.9rem;`}>{r.id}</span>
-          <span style="color:#0f172a;font-weight:600;">{r.route_name}</span>
+        <a href={`/rute/${r.slug}`} class="card">
+          <span class="badge-bus" style={`background:${r.route_color || "#334155"};`}>{r.id}</span>
+          <strong>{r.route_name}</strong>
         </a>
       ))}
     </div>

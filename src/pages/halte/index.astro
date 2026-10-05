@@ -11,21 +11,16 @@ const entries = Object.entries(stops).sort((a, b) => a[1].name.localeCompare(b[1
   canonicalPath="/halte"
 >
   <h1>Daftar Halte</h1>
-  <p>{entries.length} halte tersedia.</p>
-  <input
-    id="stop-filter"
-    type="search"
-    placeholder="Cari nama halte..."
-    style="width:100%;padding:0.6rem 0.8rem;border:1px solid #e2e8f0;border-radius:0.5rem;margin-bottom:1rem;font-size:0.95rem;"
-  />
-  <div id="stop-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.6rem;">
+  <p class="lead">{entries.length} halte tersedia.</p>
+  <input id="stop-filter" class="search-input" type="search" placeholder="Cari nama halte..." />
+  <div id="stop-grid" class="grid">
     {entries.map(([id, s]) => (
-      <a href={`/halte/${id}`} class="card" data-name={s.name.toLowerCase()} style="margin:0;">
+      <a href={`/halte/${id}`} class="card" data-name={s.name.toLowerCase()}>
         {s.name}
       </a>
     ))}
   </div>
-  <p id="stop-empty" hidden>Tidak ada halte yang cocok.</p>
+  <p id="stop-empty" class="lead" hidden>Tidak ada halte yang cocok.</p>
 
   <script>
     const input = document.getElementById("stop-filter");
