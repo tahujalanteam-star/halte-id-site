@@ -1,38 +1,82 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { loadRoutesIndex, routeSlug, compareCodes } from "../../lib/data.js";
+import { loadRoutesIndex, routeSlug, compareCodes, badgeVars, groupByCategory } from "../../lib/data.js";
 
 const routes = loadRoutesIndex().slice().sort((a, b) => compareCodes(a.id, b.id));
+const groups = groupByCategory(routes);
 ---
 <BaseLayout
   title="Daftar Semua Rute Transjakarta & JakLingko"
-  description="Daftar lengkap seluruh koridor dan rute Transjakarta serta JakLingko di Jakarta, beserta jumlah halte dan rute pemberhentian."
+  description="Daftar lengkap seluruh rute Transjakarta: Koridor BRT, Angkutan Pengumpan, Royaltrans, Transjabodetabek, dan Rumah Susun, beserta jumlah halte tiap rute."
   canonicalPath="/rute"
 >
-  <h1>Daftar Rute</h1>
-  <p class="lead">{routes.length} rute tersedia.</p>
-  <input id="route-filter" class="search-input" type="search" placeholder="Cari nomor atau nama rute..." />
-  <div id="route-list">
-    {routes.map(r => (
-      <a href={`/rute/${routeSlug(r)}`} class="card" data-name={`${r.id} ${r.route_name}`.toLowerCase()}>
-        <span class="badge-bus" style={`background:${r.route_color || "#334155"};`}>{r.id}</span>
-        <span>
-          <strong>{r.route_name}</strong>
-          <div class="sub">{r.stops_count} halte &middot; {r.start_stop} s/d {r.end_stop}</div>
-        </span>
-      </a>
+  <header class="page-head">
+    <p class="page-kicker">Transjakarta &middot; JakLingko</p>
+    <h1>Daftar Rute</h1>
+    <p class="lead">{routes.length} rute dalam {groups.length} jenis layanan. Ketik nomor atau nama tujuan untuk menyaring.</p>
+    <div class="filter-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="route-filter" type="search" autocomplete="off" placeholder="Cari nomor atau nama rute…" aria-label="Cari rute" />
+    </div>
+    <div class="filter-chips" role="group" aria-label="Jenis layanan">
+      <button type="button" class="chip" data-kind="all" aria-pressed="true">Semua <span>{routes.length}</span></button>
+      {groups.map(g => (
+        <button type="button" class="chip" data-kind={g.key} aria-pressed="false">{g.label} <span>{g.items.length}</span></button>
+      ))}
+    </div>
+  </header>
+
+  <div id="route-groups">
+    {groups.map(g => (
+      <section class="route-group home-section" id={`jenis-${g.key}`} data-kind={g.key}>
+        <div class="section-head"><h2>{g.label}</h2><span class="count">{g.items.length}</span></div>
+        <div class="grid route-grid">
+          {g.items.map(r => (
+            <a href={`/rute/${routeSlug(r)}`} class="card route-card" style={badgeVars(r.route_color)} data-name={`${r.id} ${r.route_name}`.toLowerCase()}>
+              <span class="badge-bus">{r.id}</span>
+              <span class="route-card-body">
+                <strong class="route-card-name">{r.route_name}</strong>
+                <span class="sub">{r.stops_count} halte</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
     ))}
   </div>
-  <p id="route-empty" class="lead" hidden>Tidak ada rute yang cocok.</p>
+  <p id="route-empty" class="empty-state" hidden>Tidak ada rute yang cocok. Coba kata kunci lain.</p>
   <script>
     const input = document.getElementById("route-filter");
-    const items = Array.from(document.querySelectorAll("#route-list [data-name]"));
+    const sections = Array.from(document.querySelectorAll(".route-group"));
     const empty = document.getElementById("route-empty");
-    input.addEventListener("input", () => {
+    const chips = Array.from(document.querySelectorAll(".filter-chips .chip"));
+    let kind = "all";
+    const apply = () => {
       const q = input.value.trim().toLowerCase();
-      let n = 0;
-      items.forEach(el => { const m = el.dataset.name.includes(q); el.hidden = !m; if (m) n++; });
-      empty.hidden = n !== 0;
-    });
+      let total = 0;
+      sections.forEach(sec => {
+        let n = 0;
+        const kindOk = kind === "all" || sec.dataset.kind === kind;
+        sec.querySelectorAll("[data-name]").forEach(el => {
+          const m = kindOk && el.dataset.name.includes(q);
+          el.hidden = !m; if (m) n++;
+        });
+        sec.hidden = n === 0; total += n;
+      });
+      empty.hidden = total !== 0;
+    };
+    const select = (k) => {
+      if (!chips.some(c => c.dataset.kind === k)) k = "all";
+      kind = k;
+      chips.forEach(x => x.setAttribute("aria-pressed", x.dataset.kind === k ? "true" : "false"));
+      apply();
+    };
+    chips.forEach(c => c.addEventListener("click", () => {
+      select(c.dataset.kind);
+      history.replaceState(null, "", c.dataset.kind === "all" ? location.pathname : `#${c.dataset.kind}`);
+    }));
+    input.addEventListener("input", apply);
+    // Link dari landing (/rute#pengumpan) langsung memilih jenisnya
+    if (location.hash) select(location.hash.slice(1));
   </script>
 </BaseLayout>

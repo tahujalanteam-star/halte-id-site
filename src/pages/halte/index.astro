@@ -3,39 +3,84 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { loadStops } from "../../lib/data.js";
 
 const stops = loadStops();
-const entries = Object.entries(stops).sort((a, b) => a[1].name.localeCompare(b[1].name));
+const entries = Object.entries(stops).sort((a, b) => a[1].name.localeCompare(b[1].name, "id"));
+const letterOf = name => { const c = name.trim().charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
+const groups = [];
+entries.forEach(([id, s]) => {
+  const L = letterOf(s.name);
+  let g = groups[groups.length - 1];
+  if (!g || g.letter !== L) { g = { letter: L, items: [] }; groups.push(g); }
+  g.items.push([id, s]);
+});
+const brtCount = entries.filter(([, s]) => s.type === "brt").length;
 ---
 <BaseLayout
   title="Daftar Semua Halte Bus Jakarta"
   description="Daftar lengkap seluruh halte Transjakarta dan JakLingko di Jakarta, cari berdasarkan nama halte."
   canonicalPath="/halte"
 >
-  <h1>Daftar Halte</h1>
-  <p class="lead">{entries.length} halte tersedia.</p>
-  <input id="stop-filter" class="search-input" type="search" placeholder="Cari nama halte..." />
-  <div id="stop-grid" class="grid">
-    {entries.map(([id, s]) => (
-      <a href={`/halte/${id}`} class="card" data-name={s.name.toLowerCase()}>
-        {s.name}
-      </a>
+  <header class="page-head">
+    <p class="page-kicker">Halte &amp; titik henti</p>
+    <h1>Daftar Halte</h1>
+    <p class="lead">{entries.length} halte, termasuk {brtCount} halte BRT. Pilih halte untuk melihat semua rute yang berhenti di sana.</p>
+    <div class="filter-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="stop-filter" type="search" autocomplete="off" placeholder="Cari nama halte…" aria-label="Cari halte" />
+    </div>
+    <div class="filter-chips" role="group" aria-label="Jenis halte">
+      <button type="button" class="chip" data-kind="all" aria-pressed="true">Semua <span>{entries.length}</span></button>
+      <button type="button" class="chip" data-kind="brt" aria-pressed="false">Halte BRT <span>{brtCount}</span></button>
+      <button type="button" class="chip" data-kind="nonbrt" aria-pressed="false">Non-BRT <span>{entries.length - brtCount}</span></button>
+    </div>
+    <nav class="letter-bar" aria-label="Lompat ke huruf">
+      {groups.map(g => <a href={`#huruf-${g.letter === "#" ? "0" : g.letter}`}>{g.letter}</a>)}
+    </nav>
+  </header>
+
+  <div id="stop-groups">
+    {groups.map(g => (
+      <section class="letter-group" id={`huruf-${g.letter === "#" ? "0" : g.letter}`}>
+        <h2 class="letter-head">{g.letter}</h2>
+        <div class="grid stop-grid">
+          {g.items.map(([id, s]) => (
+            <a href={`/halte/${id}`} class={`stop-card ${s.type === "brt" ? "is-brt" : ""}`} data-kind={s.type === "brt" ? "brt" : "nonbrt"} data-name={s.name.toLowerCase()}>
+              <span class="stop-card-pin" aria-hidden="true"></span>
+              <span class="stop-card-name">{s.name}</span>
+              {s.type === "brt" && <span class="stop-card-tag">BRT</span>}
+            </a>
+          ))}
+        </div>
+      </section>
     ))}
   </div>
-  <p id="stop-empty" class="lead" hidden>Tidak ada halte yang cocok.</p>
+  <p id="stop-empty" class="empty-state" hidden>Tidak ada halte yang cocok. Coba kata kunci lain.</p>
 
   <script>
     const input = document.getElementById("stop-filter");
-    const grid = document.getElementById("stop-grid");
     const empty = document.getElementById("stop-empty");
-    const cards = Array.from(grid.querySelectorAll("[data-name]"));
-    input.addEventListener("input", () => {
+    const sections = Array.from(document.querySelectorAll(".letter-group"));
+    const chips = Array.from(document.querySelectorAll(".filter-chips .chip"));
+    const letterBar = document.querySelector(".letter-bar");
+    let kind = "all";
+    const apply = () => {
       const q = input.value.trim().toLowerCase();
-      let visible = 0;
-      cards.forEach(card => {
-        const match = card.dataset.name.includes(q);
-        card.hidden = !match;
-        if (match) visible++;
+      let total = 0;
+      sections.forEach(sec => {
+        let n = 0;
+        sec.querySelectorAll("[data-name]").forEach(card => {
+          const m = card.dataset.name.includes(q) && (kind === "all" || card.dataset.kind === kind);
+          card.hidden = !m; if (m) n++;
+        });
+        sec.hidden = n === 0; total += n;
       });
-      empty.hidden = visible !== 0;
-    });
+      empty.hidden = total !== 0;
+      letterBar.hidden = q !== "" || kind !== "all";
+    };
+    chips.forEach(c => c.addEventListener("click", () => {
+      kind = c.dataset.kind;
+      chips.forEach(x => x.setAttribute("aria-pressed", x === c ? "true" : "false"));
+      apply();
+    }));
+    input.addEventListener("input", apply);
   </script>
 </BaseLayout>

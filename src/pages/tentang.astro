@@ -1,8 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-// Isi dengan alamat email kontak publik (mis. "halo@domainanda.id") agar bagian
-// "Hubungi Kami" muncul. Kosongkan kalau belum mau menampilkan kontak.
+// Alamat email kontak publik. Kosongkan kalau belum mau menampilkan kontak.
 const CONTACT_EMAIL = "tahujalanteam@gmail.com";
 ---
 <BaseLayout
@@ -10,51 +9,71 @@ const CONTACT_EMAIL = "tahujalanteam@gmail.com";
   description="halte.id adalah panduan independen rute dan halte Transjakarta & JakLingko di Jakarta: tujuan situs, sumber data, dan cara melaporkan kesalahan data."
   canonicalPath="/tentang"
 >
-  <h1>Tentang halte.id</h1>
-  <p class="lead">
-    halte.id adalah panduan independen untuk rute dan halte Transjakarta &amp; JakLingko di Jakarta.
-    Tujuannya sederhana: membantu warga dan pendatang menemukan bus yang tepat, tahu di halte mana harus
-    naik, turun, atau berpindah rute.
-  </p>
+  <section class="about-hero">
+    <svg class="about-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 80 C 120 80, 160 30, 300 30 S 480 90, 600 60" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <p class="page-kicker">Tentang kami</p>
+    <h1>Tentang halte.id</h1>
+    <p class="lead">
+      halte.id adalah panduan independen untuk rute dan halte Transjakarta &amp; JakLingko di Jakarta.
+      Tujuannya sederhana: membantu warga dan pendatang menemukan bus yang tepat, tahu di halte mana harus
+      naik, turun, atau berpindah rute.
+    </p>
+  </section>
 
-  <div class="dir-card">
+  <section class="home-section">
     <h2>Apa yang Ada di Sini</h2>
-    <ul>
-      <li><a href="/rute">Daftar rute</a>: urutan halte pemberhentian tiap rute, jam operasi, tarif, dan peta jalur.</li>
-      <li><a href="/halte">Daftar halte</a>: rute apa saja yang berhenti di setiap halte.</li>
-      <li><a href="/panduan">Panduan</a>: cara membayar, tap in dan tap out, transit, serta perbedaan jenis halte.</li>
-    </ul>
-  </div>
+    <div class="feature-grid">
+      <a href="/rute" class="feature">
+        <span class="feature-icon" style="--fi:#2563eb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 11h16"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/><path d="M6 17v3M18 17v3"/></svg></span>
+        <b>Daftar rute</b><span>Urutan halte tiap rute, jam operasi, tarif, dan peta jalur.</span>
+      </a>
+      <a href="/halte" class="feature">
+        <span class="feature-icon" style="--fi:#db6300"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        <b>Daftar halte</b><span>Rute apa saja yang berhenti di setiap halte.</span>
+      </a>
+      <a href="/panduan" class="feature">
+        <span class="feature-icon" style="--fi:#16a34a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/></svg></span>
+        <b>Panduan</b><span>Cara bayar, tap in dan tap out, transit, serta jenis halte.</span>
+      </a>
+    </div>
+  </section>
 
-  <div class="dir-card">
-    <h2>Sumber dan Pembaruan Data</h2>
-    <p>
-      Data halte, urutan pemberhentian, dan jalur rute dikumpulkan dan dirapikan secara manual oleh tim
-      halte.id, lalu dipublikasikan sebagai halaman statis. Perubahan rute di lapangan bisa terjadi lebih
-      cepat daripada pembaruan kami, jadi mohon cek papan informasi di halte atau pengumuman resmi
-      operator sebelum bepergian.
-    </p>
-  </div>
+  <section class="home-section info-pair">
+    <article class="info-card">
+      <span class="icon-tile" style="--t:#7c3aed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/><path d="M4 11.5v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
+      <h2>Sumber dan Pembaruan Data</h2>
+      <p>
+        Data halte, urutan pemberhentian, dan jalur rute dikumpulkan dan dirapikan secara manual oleh tim
+        halte.id, lalu dipublikasikan sebagai halaman statis. Perubahan rute di lapangan bisa terjadi lebih
+        cepat daripada pembaruan kami, jadi mohon cek papan informasi di halte atau pengumuman resmi
+        operator sebelum bepergian.
+      </p>
+    </article>
+    <article class="info-card">
+      <span class="icon-tile" style="--t:#0891b2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span>
+      <h2>Independen dan Tidak Resmi</h2>
+      <p>
+        halte.id tidak berafiliasi dengan PT Transportasi Jakarta (Transjakarta), Dinas Perhubungan DKI
+        Jakarta, MRT Jakarta, atau operator transportasi lainnya. Nama dan merek yang disebut adalah milik
+        masing-masing pemiliknya dan disebut hanya untuk keperluan informasi.
+      </p>
+    </article>
+  </section>
 
-  <div class="dir-card">
-    <h2>Independen dan Tidak Resmi</h2>
-    <p>
-      halte.id tidak berafiliasi dengan PT Transportasi Jakarta (Transjakarta), Dinas Perhubungan DKI
-      Jakarta, MRT Jakarta, atau operator transportasi lainnya. Nama dan merek yang disebut adalah milik
-      masing-masing pemiliknya dan disebut hanya untuk keperluan informasi.
-    </p>
-  </div>
-
-  <div class="dir-card">
-    <h2>Menemukan Kesalahan Data?</h2>
-    <p>
-      Kami menghargai koreksi dari pengguna: halte yang salah nama atau urutan, rute yang sudah berubah,
-      atau jalur peta yang melenceng.
-      {CONTACT_EMAIL
-        ? <> Kirim ke <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> dengan menyebut nomor rute atau nama halte yang dimaksud.</>
-        : <>Informasi kontak akan segera ditambahkan.</>}
-    </p>
-  </div>
+  <section class="cta-card">
+    <div>
+      <h2>Menemukan Kesalahan Data?</h2>
+      <p>
+        Kami menghargai koreksi dari pengguna: halte yang salah nama atau urutan, rute yang sudah berubah,
+        atau jalur peta yang melenceng. Sebutkan nomor rute atau nama halte yang dimaksud.
+      </p>
+    </div>
+    {CONTACT_EMAIL
+      ? <a class="btn btn-light" href={`mailto:${CONTACT_EMAIL}?subject=Koreksi%20data%20halte.id`}>Kirim koreksi<span class="cta-mail">{CONTACT_EMAIL}</span></a>
+      : <p>Informasi kontak akan segera ditambahkan.</p>}
+  </section>
 
   <p class="lead">Baca juga <a href="/kebijakan-privasi">Kebijakan Privasi</a> kami.</p>
 </BaseLayout>

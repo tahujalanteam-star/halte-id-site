@@ -146,5 +146,46 @@ export function routesForStop(stopId, stopServices, routeLookup) {
       slug,
       route_name: entry.route_name,
       route_color: entry.route_color,
+      category: entry.category,
     }));
+}
+
+// ---- Warna lencana: pilih teks hitam/putih sesuai kecerahan warna rute (WCAG-ish).
+export function readableText(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+  if (!m) return "#ffffff";
+  const n = parseInt(m[1], 16);
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return L > 0.4 ? "#1a1a1a" : "#ffffff";
+}
+// CSS custom properties untuk lencana/hero: --c (warna rute) & --on (warna teks di atasnya)
+export function badgeVars(hex, fallback = "#334155") {
+  const c = /^#[0-9a-f]{6}$/i.test(String(hex || "")) ? hex : fallback;
+  return `--c:${c};--on:${readableText(c)};`;
+}
+
+// ---- Jenis layanan rute (field "category" di routes-index.json), urutan = urutan tampil.
+export const ROUTE_CATEGORIES = [
+  { key: "brt", label: "Koridor BRT" },
+  { key: "pengumpan", label: "Angkutan Pengumpan" },
+  { key: "royaltrans", label: "Royaltrans" },
+  { key: "transjabodetabek", label: "Transjabodetabek" },
+  { key: "rusun", label: "Rumah Susun" },
+  { key: "mikrotrans", label: "Mikrotrans" },
+];
+const CATEGORY_KEYS = new Set(ROUTE_CATEGORIES.map(c => c.key));
+// Rute tanpa category (atau nilai tak dikenal) masuk "lainnya" dan tampil netral.
+export function categoryOf(entry) {
+  const c = String(entry?.category || "").toLowerCase();
+  return CATEGORY_KEYS.has(c) ? c : "lainnya";
+}
+export function categoryLabel(key) {
+  return ROUTE_CATEGORIES.find(c => c.key === key)?.label || "Rute Transjakarta";
+}
+// Kelompokkan list rute per jenis, urut sesuai ROUTE_CATEGORIES; kelompok kosong dibuang.
+export function groupByCategory(list) {
+  const groups = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }].map(c => ({ ...c, items: [] }));
+  list.forEach(r => groups.find(g => g.key === categoryOf(r)).items.push(r));
+  return groups.filter(g => g.items.length > 0);
 }

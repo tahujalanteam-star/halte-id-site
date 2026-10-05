@@ -22,7 +22,7 @@ const steps = [
 
 const topics = [
   {
-    "id": "pembayaran",
+    "id": "pembayaran", "color": "#2563eb", "icon": "card", "intro": "Semua moda di Jakarta sudah non-tunai. Ini pilihan cara bayarnya.",
     "title": "Pembayaran & Tiket",
     "items": [
       {
@@ -59,7 +59,7 @@ const topics = [
     ]
   },
   {
-    "id": "transit",
+    "id": "transit", "color": "#16a34a", "icon": "transit", "intro": "Pindah koridor atau ganti moda tanpa bingung dan tanpa bayar dobel.",
     "title": "Transit & Integrasi",
     "items": [
       {
@@ -94,7 +94,7 @@ const topics = [
     ]
   },
   {
-    "id": "halte-stasiun",
+    "id": "halte-stasiun", "color": "#db6300", "icon": "halte", "intro": "Kenali jenis halte, fasilitas, dan etika selama menunggu.",
     "title": "Halte & Stasiun",
     "items": [
       {
@@ -130,7 +130,7 @@ const topics = [
     ]
   },
   {
-    "id": "mrt-lrt-krl",
+    "id": "mrt-lrt-krl", "color": "#db0000", "icon": "train", "intro": "Moda rel yang terhubung dengan Transjakarta di banyak titik.",
     "title": "MRT, LRT & KRL Commuter",
     "items": [
       {
@@ -165,66 +165,70 @@ const topics = [
     ]
   }
 ];
+const ICONS = {"card": "<rect x=\"2.5\" y=\"5\" width=\"19\" height=\"14\" rx=\"2.5\"/><path d=\"M2.5 10h19M6.5 15h4\"/>", "transit": "<path d=\"M4 8h14l-3.5-3.5\"/><path d=\"M20 16H6l3.5 3.5\"/>", "halte": "<path d=\"M4 21V8l8-5 8 5v13\"/><path d=\"M4 11h16\"/><path d=\"M9 21v-6h6v6\"/>", "train": "<rect x=\"5\" y=\"3\" width=\"14\" height=\"14\" rx=\"3\"/><path d=\"M5 10h14\"/><circle cx=\"9\" cy=\"13.5\" r=\"1\"/><circle cx=\"15\" cy=\"13.5\" r=\"1\"/><path d=\"m8 21 2-4M16 21l-2-4\"/>", "info": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 11v5M12 8h.01\"/>"};
 ---
 <BaseLayout
   title="Panduan Naik Transjakarta untuk Pemula"
   description="Panduan naik Transjakarta dan JakLingko: cara bayar dengan e-money, aturan tap in dan tap out, transit gratis antar-koridor, perbedaan halte BRT dan non-BRT, serta integrasi dengan MRT, LRT, dan KRL."
   canonicalPath="/panduan"
 >
-  <h1>Panduan Naik Transjakarta &amp; Transportasi Jakarta</h1>
-  <p class="lead">
-    Baru pertama kali naik bus di Jakarta? Berikut cara memakai halte.id dan hal-hal dasar yang perlu
-    diketahui sebelum naik Transjakarta, JakLingko, MRT, LRT, dan KRL.
-  </p>
+  <header class="page-head">
+    <p class="page-kicker">Panduan</p>
+    <h1>Panduan Naik Transjakarta &amp; Transportasi Jakarta</h1>
+    <p class="lead">
+      Baru pertama kali naik bus di Jakarta? Berikut cara memakai halte.id dan hal-hal dasar yang perlu
+      diketahui sebelum naik Transjakarta, JakLingko, MRT, LRT, dan KRL.
+    </p>
+    <nav class="topic-nav" aria-label="Topik panduan">
+      <a href="#langkah" style="--t:var(--primary)"><span class="tn-dot"></span>4 Langkah Awal</a>
+      {topics.map(t => <a href={`#${t.id}`} style={`--t:${t.color}`}><span class="tn-dot"></span>{t.title}</a>)}
+    </nav>
+  </header>
 
-  <nav class="topic-nav" aria-label="Topik panduan">
-    <a href="#langkah">4 Langkah Awal</a>
-    {topics.map(t => <a href={`#${t.id}`}>{t.title}</a>)}
-  </nav>
-
-  <section id="langkah" class="dir-card">
+  <section id="langkah" class="guide-steps">
     <h2>Baru Pertama di Jakarta? Ikuti 4 Langkah Ini</h2>
-    <ol class="steps">
-      {steps.map(st => (
-        <li><strong>{st.title}</strong><p>{st.desc}</p></li>
+    <ol class="step-track">
+      {steps.map((st, i) => (
+        <li class="step">
+          <span class="step-num">{i + 1}</span>
+          <strong>{st.title}</strong>
+          <p>{st.desc}</p>
+        </li>
       ))}
     </ol>
-    <p>Siap mencari rute? Buka <a href="/rute">daftar rute</a> atau <a href="/halte">daftar halte</a>.</p>
+    <div class="step-cta">
+      <span>Siap mencari rute?</span>
+      <a href="/rute" class="btn btn-primary">Buka daftar rute</a>
+      <a href="/halte" class="btn">Cari halte</a>
+    </div>
   </section>
 
   {topics.map(t => (
-    <section id={t.id} class="dir-card">
-      <h2>{t.title}</h2>
-      {t.items.map(item => (
-        <div class="topic-item">
-          <h3>{item.title}</h3>
-          <p>{item.desc}</p>
-          {item.tags && (
-            <div class="tags">{item.tags.map(tag => <span class="tag">{tag}</span>)}</div>
-          )}
+    <section id={t.id} class="guide-topic" style={`--t:${t.color}`}>
+      <div class="topic-head">
+        <span class="icon-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={ICONS[t.icon]} /></span>
+        <div>
+          <h2>{t.title}</h2>
+          <p>{t.intro}</p>
         </div>
-      ))}
+      </div>
+      <div class="topic-grid">
+        {t.items.map(item => (
+          <article class="topic-card">
+            <h3>{item.title}</h3>
+            <p>{item.desc}</p>
+            {item.tags && (
+              <div class="tags">{item.tags.map(tag => <span class="tag">{tag}</span>)}</div>
+            )}
+          </article>
+        ))}
+      </div>
     </section>
   ))}
 
-  <p class="lead" style="margin-top:1.5rem;">
-    Informasi tarif dan aturan dapat berubah sewaktu-waktu. Untuk kepastian, rujuk pengumuman resmi
-    Transjakarta, MRT Jakarta, LRT, dan KAI Commuter.
-  </p>
-
-  <style>
-    .topic-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.25rem 0 1.5rem; }
-    .topic-nav a { border: 1px solid var(--border-color); background: var(--card-bg); border-radius: 999px;
-      padding: 0.35rem 0.9rem; font-size: 0.85rem; font-weight: 600; }
-    .topic-nav a:hover { border-color: var(--primary); text-decoration: none; }
-    section[id] { scroll-margin-top: 80px; }
-    .steps { padding-left: 1.2rem; margin: 0 0 1rem; }
-    .steps li { margin-bottom: 0.9rem; }
-    .steps p, .topic-item p { margin: 0.2rem 0 0; color: var(--text-sub); }
-    .topic-item { padding: 0.9rem 0; border-top: 1px solid var(--border-color); }
-    .topic-item:first-of-type { border-top: 0; padding-top: 0; }
-    .topic-item h3 { margin: 0; font-size: 1rem; }
-    .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
-    .tag { background: var(--badge-bg); color: var(--text-sub); border-radius: 8px; padding: 0.15rem 0.6rem; font-size: 0.75rem; font-weight: 600; }
-  </style>
+  <aside class="callout">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" set:html={ICONS.info} />
+    <p>Informasi tarif dan aturan dapat berubah sewaktu-waktu. Untuk kepastian, rujuk pengumuman resmi
+    Transjakarta, MRT Jakarta, LRT, dan KAI Commuter.</p>
+  </aside>
 </BaseLayout>

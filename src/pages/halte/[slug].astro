@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
+import { badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
 
 export async function getStaticPaths() {
   const stops = loadStops();
@@ -17,30 +17,48 @@ const stopServices = loadStopServices();
 const routeLookup = buildRouteLookup(loadRoutesIndex());
 const serving = routesForStop(stopId, stopServices, routeLookup);
 const typeLabel = stop.type === "brt" ? "Halte BRT" : "Halte Non-BRT";
+const isBrt = stop.type === "brt";
+const MODE = { mrt: { label: "MRT", color: "#db0000" }, lrt: { label: "LRT", color: "#c2185b" }, krl: { label: "KRL", color: "#db6300" }, kai: { label: "Kereta Bandara", color: "#1e3a8a" } };
+const modes = [...new Set((stop.transfers || []).map(t => t.type))].filter(t => MODE[t]).map(t => MODE[t]);
+const groups = groupByCategory(serving);
 ---
 <BaseLayout
   title={`Halte ${stop.name}`}
-  description={`Daftar rute Transjakarta & JakLingko yang berhenti di halte ${stop.name}. ${typeLabel}.`}
+  description={`Daftar ${serving.length} rute Transjakarta & JakLingko yang berhenti di halte ${stop.name}. ${typeLabel}${modes.length ? `, terhubung ke ${modes.map(m => m.label).join(", ")}` : ""}.`}
   canonicalPath={`/halte/${stopId}`}
 >
   <div class="crumb"><a href="/halte">Daftar Halte</a> / <span>{stop.name}</span></div>
-  <div class="stop-hero">
-    <span class="badge-sub" style="background:#475569;">{typeLabel}</span>
-    <h1 style="margin-top:0.4rem;">{stop.name}</h1>
-    <div class="sub" style="color:var(--text-sub);">{serving.length} rute berhenti di halte ini</div>
-  </div>
+  <header class={`page-hero stop-hero2 ${isBrt ? "is-brt" : ""}`}>
+    <span class="hero-pin" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    </span>
+    <div class="hero-text">
+      <p class="page-kicker">{typeLabel}</p>
+      <h1>{stop.name}</h1>
+      <ul class="soft-chips">
+        <li><b>{serving.length}</b> rute berhenti di sini</li>
+        {modes.map(m => <li class="mode-chip" style={`--m:${m.color}`}>Transit {m.label}</li>)}
+      </ul>
+    </div>
+  </header>
 
-  <h2>Rute yang Berhenti di Sini</h2>
   {serving.length === 0 ? (
     <p class="lead">Belum ada data rute untuk halte ini.</p>
   ) : (
-    <div>
-      {serving.map(r => (
-        <a href={`/rute/${r.slug}`} class="card">
-          <span class="badge-bus" style={`background:${r.route_color || "#334155"};`}>{r.id}</span>
-          <strong>{r.route_name}</strong>
-        </a>
+    <>
+      {groups.map(g => (
+        <section class="home-section">
+          <div class="section-head"><h2>{g.label}</h2><span class="count">{g.items.length}</span></div>
+          <div class="grid">
+            {g.items.map(r => (
+              <a href={`/rute/${r.slug}`} class="card route-card" style={badgeVars(r.route_color)}>
+                <span class="badge-bus">{r.id}</span>
+                <span class="route-card-name">{r.route_name}</span>
+              </a>
+            ))}
+          </div>
+        </section>
       ))}
-    </div>
+    </>
   )}
 </BaseLayout>

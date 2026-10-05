@@ -1,15 +1,19 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { loadRoutesIndex, loadStops, routeSlug, compareCodes } from "../lib/data.js";
+import { loadRoutesIndex, loadStops, routeSlug, compareCodes, badgeVars, readableText, categoryOf, groupByCategory } from "../lib/data.js";
 
 const routes = loadRoutesIndex().slice().sort((a, b) => compareCodes(a.id, b.id));
 const stops = loadStops();
-const popularRoutes = routes.slice(0, 8);
+const stopCount = Object.keys(stops).length;
+const corridors = routes.filter(r => categoryOf(r) === "brt");
+const serviceGroups = groupByCategory(routes).filter(g => g.key !== "brt");
+const heroColors = corridors.slice(0, 4).map(r => r.route_color || "#2563eb");
+while (heroColors.length < 4) heroColors.push(["#D90429", "#354992", "#efc94b", "#1aa260"][heroColors.length]);
 
-// Small client-side search index: route + stop names, built at build time.
+// Indeks pencarian kecil (dibuat saat build)
 const searchIndex = [
-  ...routes.map(r => ({ type: "rute", label: `${r.id} — ${r.route_name}`, url: `/rute/${routeSlug(r)}` })),
-  ...Object.entries(stops).map(([id, s]) => ({ type: "halte", label: s.name, url: `/halte/${id}` })),
+  ...routes.map(r => ({ t: "r", id: r.id, label: r.route_name, url: `/rute/${routeSlug(r)}`, c: r.route_color || "#334155", on: readableText(r.route_color || "#334155") })),
+  ...Object.entries(stops).map(([id, s]) => ({ t: "h", label: s.name, url: `/halte/${id}`, brt: s.type === "brt" })),
 ];
 ---
 <BaseLayout
@@ -17,46 +21,144 @@ const searchIndex = [
   description="Panduan lengkap rute dan halte Transjakarta & JakLingko Jakarta — cari nomor rute, jadwal, tarif, dan daftar pemberhentian tiap koridor bus di Jakarta."
   canonicalPath="/"
 >
-  <h1>Panduan Rute &amp; Halte Bus Jakarta</h1>
-  <p class="lead">
-    Cari informasi lengkap rute Transjakarta dan JakLingko: jadwal keberangkatan, tarif, daftar halte pemberhentian,
-    serta peta jalur tiap koridor — semua dalam satu tempat.
-  </p>
+  <section class="home-hero">
+    <div class="home-lines-wrap" aria-hidden="true"><svg class="home-lines" viewBox="0 0 420 300" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+      <path d="M-10 250 C 90 250, 120 170, 210 170 S 330 80, 430 80" stroke={heroColors[0]} />
+      <path d="M-10 200 C 70 200, 110 120, 200 120 S 320 210, 430 210" stroke={heroColors[1]} />
+      <path d="M120 310 C 120 230, 210 230, 260 170 S 300 40, 300 -10" stroke={heroColors[2]} />
+      <path d="M430 150 C 360 150, 340 260, 250 270 S 120 300, 60 310" stroke={heroColors[3]} />
+      <circle cx="210" cy="170" r="9" /><circle cx="200" cy="120" r="9" /><circle cx="260" cy="170" r="9" />
+    </svg></div>
+    <div class="home-hero-inner">
+      <p class="home-kicker"><span class="dot"></span>Transjakarta &middot; JakLingko &middot; Mikrotrans</p>
+      <h1>Panduan Rute &amp; <span class="hl">Halte Bus</span> Jakarta</h1>
+      <p class="home-lead">
+        Cari nomor rute atau nama halte: jadwal, tarif, daftar pemberhentian, dan peta jalur tiap koridor dalam satu tempat.
+      </p>
+      <div class="home-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="site-search" type="search" autocomplete="off" placeholder="Contoh: 1, 6V, Blok M, Harmoni…" aria-label="Cari rute atau halte" />
+        <ul id="search-results" class="home-results" hidden></ul>
+      </div>
+      <div class="home-stats">
+        <a href="/rute"><b>{routes.length}</b> rute</a>
+        <a href="/halte"><b>{stopCount}</b> halte</a>
+        <a href="/panduan"><b>Panduan</b> naik bus &rarr;</a>
+      </div>
+    </div>
+  </section>
 
-  <input id="site-search" class="search-input" type="search" placeholder="Cari nomor rute atau nama halte..." />
-  <ul id="search-results" class="results"></ul>
+  {corridors.length > 0 && (
+    <section class="home-section">
+      <div class="section-head">
+        <h2>Koridor BRT</h2>
+        <a href="/rute">Semua rute &rarr;</a>
+      </div>
+      <div class="corridor-row">
+        {corridors.map(r => (
+          <a href={`/rute/${routeSlug(r)}`} class="corridor" style={badgeVars(r.route_color)} title={`Koridor ${r.id}: ${r.route_name}`}>
+            <span class="corridor-num">{r.id}</span>
+            <span class="corridor-name">{r.route_name}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
 
-  <h2>Rute Populer</h2>
-  <div class="grid">
-    {popularRoutes.map(r => (
-      <a href={`/rute/${routeSlug(r)}`} class="card">
-        <span class="badge-bus" style={`background:${r.route_color || "#334155"};`}>{r.id}</span>
-        <span>{r.route_name}</span>
-      </a>
-    ))}
-  </div>
-  <p><a href="/rute">Lihat semua {routes.length} rute &rarr;</a> &middot; <a href="/halte">Lihat semua {Object.keys(stops).length} halte &rarr;</a></p>
+  {serviceGroups.length > 0 && (
+    <section class="home-section">
+      <div class="section-head"><h2>Jenis Layanan Lainnya</h2><a href="/rute">Lihat semua {routes.length} &rarr;</a></div>
+      <div class="service-grid">
+        {serviceGroups.map(g => (
+          <a href={`/rute#${g.key}`} class="service-card">
+            <span class="service-top"><b>{g.label}</b><span class="count">{g.items.length} rute</span></span>
+            <span class="service-badges">
+              {g.items.slice(0, 6).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+              {g.items.length > 6 && <span class="service-more">+{g.items.length - 6}</span>}
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <section class="home-section feature-grid">
+    <a href="/rute" class="feature">
+      <span class="feature-icon" style="--fi:#2563eb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 11h16"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/><path d="M6 17v3M18 17v3"/></svg></span>
+      <b>Daftar rute</b><span>Semua koridor & rute dengan urutan halte lengkap.</span>
+    </a>
+    <a href="/halte" class="feature">
+      <span class="feature-icon" style="--fi:#db6300"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+      <b>Cari halte</b><span>Lihat rute apa saja yang berhenti di sebuah halte.</span>
+    </a>
+    <a href="/panduan" class="feature">
+      <span class="feature-icon" style="--fi:#16a34a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M9 8h6"/></svg></span>
+      <b>Panduan naik</b><span>Cara bayar, transit, dan tips naik Transjakarta.</span>
+    </a>
+  </section>
 
   <script type="application/json" id="search-data" set:html={JSON.stringify(searchIndex)} />
   <script>
     const data = JSON.parse(document.getElementById("search-data").textContent);
     const input = document.getElementById("site-search");
     const results = document.getElementById("search-results");
-    input.addEventListener("input", () => {
-      const q = input.value.trim().toLowerCase();
+    const norm = s => s.toLowerCase();
+    const render = () => {
+      const q = norm(input.value.trim());
       results.innerHTML = "";
-      if (!q) return;
-      data
-        .filter(item => item.label.toLowerCase().includes(q))
-        .slice(0, 8)
-        .forEach(item => {
-          const li = document.createElement("li");
-          const a = document.createElement("a");
-          a.href = item.url;
-          a.textContent = `${item.type === "rute" ? "🚌" : "📍"} ${item.label}`;
-          li.appendChild(a);
-          results.appendChild(li);
-        });
+      if (!q) { results.hidden = true; return; }
+      // Nomor rute yang persis cocok diletakkan paling atas
+      const hits = data
+        .map(it => {
+          const id = it.id ? norm(it.id) : "";
+          const label = norm(it.label);
+          let score = -1;
+          if (id && id === q) score = 0;
+          else if (id && id.startsWith(q)) score = 1;
+          else if (label.startsWith(q)) score = 2;
+          else if (label.includes(q)) score = 3;
+          return { it, score };
+        })
+        .filter(x => x.score >= 0)
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 8);
+      if (!hits.length) {
+        const li = document.createElement("li");
+        li.className = "empty";
+        li.textContent = "Tidak ditemukan. Coba nomor rute atau nama halte lain.";
+        results.appendChild(li);
+      }
+      hits.forEach(({ it }) => {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = it.url;
+        const tag = document.createElement("span");
+        if (it.t === "r") {
+          tag.className = "badge-bus";
+          tag.style.setProperty("--c", it.c);
+          tag.style.setProperty("--on", it.on);
+          tag.textContent = it.id;
+        } else {
+          tag.className = "res-pin" + (it.brt ? " is-brt" : "");
+          tag.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+        }
+        const text = document.createElement("span");
+        text.className = "res-text";
+        text.innerHTML = "<b></b><small></small>";
+        text.querySelector("b").textContent = it.label;
+        text.querySelector("small").textContent = it.t === "r" ? "Rute" : (it.brt ? "Halte BRT" : "Halte");
+        a.append(tag, text);
+        li.appendChild(a);
+        results.appendChild(li);
+      });
+      results.hidden = false;
+    };
+    input.addEventListener("input", render);
+    input.addEventListener("focus", render);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { const first = results.querySelector("a"); if (first) location.href = first.href; }
+      if (e.key === "Escape") { results.hidden = true; }
     });
+    document.addEventListener("click", e => { if (!e.target.closest(".home-search")) results.hidden = true; });
   </script>
 </BaseLayout>
