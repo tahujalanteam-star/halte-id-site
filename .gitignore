@@ -12,3 +12,6 @@ dist/
 .env.*
 .DS_Store
 Thumbs.db
+
+# Skrip bantu lokal (pencocokan data, dll.)
+/scripts/

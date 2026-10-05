@@ -1,0 +1,95 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
+import { stopGroups, coordOf, staticStopMap } from "../../lib/stop-insights.js";
+
+export async function getStaticPaths() {
+  return stopGroups().groups.map(g => ({ params: { slug: g.slug }, props: { slug: g.slug } }));
+}
+
+const { slug } = Astro.props;
+const group = stopGroups().groups.find(g => g.slug === slug);
+const stops = loadStops();
+const stopServices = loadStopServices();
+const routeLookup = buildRouteLookup(loadRoutesIndex());
+
+const members = group.stopIds.map(id => ({ id, stop: stops[id], routes: routesForStop(id, stopServices, routeLookup) }));
+// Gabungan rute + di halte mana saja bisa naik
+const routeMap = new Map();
+for (const m of members) for (const r of m.routes) {
+  if (!routeMap.has(r.id)) routeMap.set(r.id, { ...r, at: [] });
+  routeMap.get(r.id).at.push(m);
+}
+const allRoutes = [...routeMap.values()];
+const cats = groupByCategory(allRoutes);
+const brtCount = members.filter(m => m.stop.type === "brt").length;
+
+const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
+const mapUrl = staticStopMap({ main: members.map(m => coordOf(m.id)).filter(Boolean), token: TOKEN });
+---
+<BaseLayout
+  title={`${group.name}: Halte & Rute Transjakarta`}
+  description={`${allRoutes.length} rute Transjakarta di ${group.name}, tersebar di ${members.length} halte yang berdekatan: ${members.map(m => m.stop.name).join(", ")}. Lihat rute apa naik di halte mana.`}
+  canonicalPath={`/kawasan/${slug}`}
+>
+  <div class="crumb"><a href="/kawasan">Kawasan Transit</a> / <span>{group.name}</span></div>
+  <header class="page-hero is-brt area-hero">
+    <span class="hero-pin" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><circle cx="12" cy="17" r="2.5"/><path d="M9.2 9.5 11 15M14.8 9.5 13 15M9.5 8h5"/></svg>
+    </span>
+    <div class="hero-text">
+      <p class="page-kicker">Kawasan transit</p>
+      <h1>{group.name}</h1>
+      <ul class="soft-chips">
+        <li><b>{members.length}</b> halte berdekatan</li>
+        <li><b>{allRoutes.length}</b> rute</li>
+        {brtCount > 0 && <li><b>{brtCount}</b> halte BRT</li>}
+      </ul>
+    </div>
+  </header>
+
+  <p class="stop-intro">
+    {group.name} terdiri dari {members.length} halte yang letaknya berdekatan dan bisa dijangkau dengan berjalan kaki.
+    Totalnya ada {allRoutes.length} rute Transjakarta yang berhenti di kawasan ini. Pindah antarhalte di kawasan ini
+    biasanya berarti keluar dari satu halte lalu masuk lagi di halte lain, jadi perhatikan aturan tap in dan tap out.
+  </p>
+
+  {mapUrl && (
+    <figure class="mini-map">
+      <img src={mapUrl} alt={`Peta halte-halte di ${group.name}`} width="760" height="320" loading="lazy" />
+      <figcaption><span class="mm-dot is-main"></span>Halte di {group.name}</figcaption>
+    </figure>
+  )}
+
+  <section class="home-section">
+    <div class="section-head"><h2>Halte di Kawasan Ini</h2><span class="count">{members.length}</span></div>
+    <div class="grid near-grid">
+      {members.map(m => (
+        <a href={`/halte/${m.id}`} class="near-card">
+          <span class="near-top"><b>{m.stop.name}</b><span class={`near-dist ${m.stop.type === "brt" ? "is-brt" : ""}`}>{m.stop.type === "brt" ? "BRT" : "Non-BRT"}</span></span>
+          <span class="near-badges">
+            {m.routes.slice(0, 10).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+            {m.routes.length > 10 && <span class="service-more">+{m.routes.length - 10}</span>}
+          </span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  {cats.map(c => (
+    <section class="home-section">
+      <div class="section-head"><h2>{c.label}</h2><span class="count">{c.items.length}</span></div>
+      <div class="area-routes">
+        {c.items.map(r => (
+          <div class="area-route">
+            <a href={`/rute/${r.slug}`} class="area-route-main" style={badgeVars(r.route_color)}>
+              <span class="badge-bus">{r.id}</span>
+              <strong>{r.route_name}</strong>
+            </a>
+            <p class="area-at">Naik di {r.at.map((m, i) => <>{i > 0 && ", "}<a href={`/halte/${m.id}`}>{m.stop.name}</a></>)}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
+</BaseLayout>

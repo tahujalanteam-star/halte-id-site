@@ -1,0 +1,31 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { loadStops, loadStopServices } from "../../lib/data.js";
+import { stopGroups } from "../../lib/stop-insights.js";
+
+const stops = loadStops();
+const svc = loadStopServices();
+const groups = stopGroups().groups.map(g => ({
+  ...g,
+  routeCount: new Set(g.stopIds.flatMap(id => svc[id] || [])).size,
+})).sort((a, b) => b.routeCount - a.routeCount || a.name.localeCompare(b.name, "id"));
+---
+<BaseLayout
+  title="Kawasan Transit Transjakarta"
+  description="Daftar kawasan transit Transjakarta di Jakarta: terminal dan halte BRT beserta bus stop di sekitarnya yang bisa dijangkau dengan berjalan kaki."
+  canonicalPath="/kawasan"
+>
+  <header class="page-head">
+    <p class="page-kicker">Halte &amp; terminal</p>
+    <h1>Kawasan Transit</h1>
+    <p class="lead">{groups.length} kawasan: terminal atau halte BRT beserta halte-halte di sekitarnya yang bisa dijangkau dengan berjalan kaki. Diurutkan dari yang paling banyak rutenya.</p>
+  </header>
+  <div class="grid near-grid">
+    {groups.map(g => (
+      <a href={`/kawasan/${g.slug}`} class="near-card">
+        <span class="near-top"><b>{g.name}</b><span class="near-dist">{g.routeCount} rute</span></span>
+        <span class="sub">{g.stopIds.map(id => stops[id].name).join(" · ")}</span>
+      </a>
+    ))}
+  </div>
+</BaseLayout>

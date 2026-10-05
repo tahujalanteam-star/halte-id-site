@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
+import { badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
+import { routeContext, nearbyStops, stopGroups, coordOf, distanceM, formatDistance, staticStopMap } from "../../lib/stop-insights.js";
 
 export async function getStaticPaths() {
   const stops = loadStops();
@@ -21,13 +22,63 @@ const isBrt = stop.type === "brt";
 const MODE = { mrt: { label: "MRT", color: "#db0000" }, lrt: { label: "LRT", color: "#c2185b" }, krl: { label: "KRL", color: "#db6300" }, kai: { label: "Kereta Bandara", color: "#1e3a8a" } };
 const modes = [...new Set((stop.transfers || []).map(t => t.type))].filter(t => MODE[t]).map(t => MODE[t]);
 const groups = groupByCategory(serving);
+const nameOf = id => stops[id]?.name || id;
+
+// Konteks sebelum/sesudah per rute & arah
+const ctx = routeContext(stopId);
+function contextFor(routeId) {
+  const occ = ctx.get(String(routeId)) || [];
+  const dirCount = occ[0]?.dirCount || 0;
+  const dirsSeen = new Set(occ.map(o => o.dirIndex));
+  return {
+    rows: occ.map(o => ({
+      towards: nameOf(o.lastId),
+      prev: o.prevId ? { id: o.prevId, name: nameOf(o.prevId) } : null,
+      next: o.nextId ? { id: o.nextId, name: nameOf(o.nextId) } : null,
+      isFirst: o.pos === 0,
+      isLast: o.pos === o.total - 1,
+    })),
+    oneWay: dirCount > 1 && dirsSeen.size === 1,
+  };
+}
+function summaryFor(c) {
+  if (!c.rows.length) return "";
+  const t = [...new Set(c.rows.map(r => r.towards))];
+  return t.map(x => `arah ${x}`).join(" · ");
+}
+
+// Kawasan & halte terdekat
+const { byStop } = stopGroups();
+const group = byStop.get(stopId) || null;
+const siblings = group ? group.stopIds.filter(id => id !== stopId) : [];
+const me = coordOf(stopId);
+const groupDist = id => (me && coordOf(id) ? formatDistance(distanceM(me, coordOf(id))) : null);
+const nearby = nearbyStops(stopId, { limit: 6, exclude: siblings });
+const routesAt = id => routesForStop(id, stopServices, routeLookup);
+
+// Peta mini
+const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
+const mapUrl = me ? staticStopMap({
+  main: [me],
+  others: [...siblings, ...nearby.map(n => n.id)].map(coordOf).filter(Boolean),
+  token: TOKEN,
+}) : null;
+
+// Paragraf pembuka unik per halte
+const corridorIds = serving.filter(r => categoryOf(r) === "brt").map(r => r.id);
+const intro = [
+  `Halte ${stop.name} adalah ${isBrt ? "halte BRT" : "halte non-BRT (bus stop di tepi jalan)"} yang dilayani ${serving.length} rute Transjakarta${corridorIds.length ? `, termasuk koridor BRT ${corridorIds.slice(0, 6).join(", ")}${corridorIds.length > 6 ? " dan lainnya" : ""}` : ""}.`,
+  modes.length ? `Dari sini kamu bisa transit ke ${modes.map(m => m.label).join(" dan ")}.` : "",
+  group ? `Halte ini termasuk ${group.hasTerminal ? "kawasan " : ""}${group.name} bersama ${siblings.length} halte lain yang bisa dijangkau dengan berjalan kaki.` : "",
+  !group && nearby.length ? `Halte terdekat adalah ${nameOf(nearby[0].id)} (sekitar ${formatDistance(nearby[0].distance)}).` : "",
+].filter(Boolean).join(" ");
 ---
 <BaseLayout
   title={`Halte ${stop.name}`}
-  description={`Daftar ${serving.length} rute Transjakarta & JakLingko yang berhenti di halte ${stop.name}. ${typeLabel}${modes.length ? `, terhubung ke ${modes.map(m => m.label).join(", ")}` : ""}.`}
+  description={`Daftar ${serving.length} rute Transjakarta yang berhenti di halte ${stop.name}, lengkap dengan halte sebelum dan sesudahnya di tiap arah. ${typeLabel}${modes.length ? `, terhubung ke ${modes.map(m => m.label).join(", ")}` : ""}.`}
   canonicalPath={`/halte/${stopId}`}
 >
-  <div class="crumb"><a href="/halte">Daftar Halte</a> / <span>{stop.name}</span></div>
+  <div class="crumb"><a href="/halte">Daftar Halte</a>{group && <> / <a href={`/kawasan/${group.slug}`}>{group.name}</a></>} / <span>{stop.name}</span></div>
   <header class={`page-hero stop-hero2 ${isBrt ? "is-brt" : ""}`}>
     <span class="hero-pin" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -38,9 +89,30 @@ const groups = groupByCategory(serving);
       <ul class="soft-chips">
         <li><b>{serving.length}</b> rute berhenti di sini</li>
         {modes.map(m => <li class="mode-chip" style={`--m:${m.color}`}>Transit {m.label}</li>)}
+        {stop.split_by_direction && <li>2 bangunan per arah</li>}
+        {group && <li><a href={`/kawasan/${group.slug}`}>{group.name}</a></li>}
       </ul>
     </div>
   </header>
+
+  <p class="stop-intro">{intro}</p>
+
+  {stop.split_by_direction && (
+    <aside class="callout split-callout">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V9l4-3 4 3v12"/><path d="M12 21V9l4-3 4 3v12"/><path d="M2 21h20"/></svg>
+      <p><b>Halte ini terdiri dari 2 bangunan terpisah, satu untuk tiap arah.</b> Masuklah dari bangunan yang sesuai arah tujuanmu.
+      Untuk berganti arah, kamu harus keluar (tap out) lalu masuk lagi (tap in) di bangunan seberang.</p>
+    </aside>
+  )}
+
+  {mapUrl && (
+    <figure class="mini-map">
+      <img src={mapUrl} alt={`Peta lokasi halte ${stop.name} dan halte di sekitarnya`} width="760" height="320" loading="lazy" />
+      <figcaption><span class="mm-dot is-main"></span>{stop.name} <span class="mm-dot"></span>halte sekitar
+        <a href={`https://www.google.com/maps/search/?api=1&query=${me.lat},${me.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
+      </figcaption>
+    </figure>
+  )}
 
   {serving.length === 0 ? (
     <p class="lead">Belum ada data rute untuk halte ini.</p>
@@ -49,16 +121,87 @@ const groups = groupByCategory(serving);
       {groups.map(g => (
         <section class="home-section">
           <div class="section-head"><h2>{g.label}</h2><span class="count">{g.items.length}</span></div>
-          <div class="grid">
-            {g.items.map(r => (
-              <a href={`/rute/${r.slug}`} class="card route-card" style={badgeVars(r.route_color)}>
-                <span class="badge-bus">{r.id}</span>
-                <span class="route-card-name">{r.route_name}</span>
-              </a>
-            ))}
+          <div class="ctx-list">
+            {g.items.map(r => {
+              const c = contextFor(r.id);
+              return (
+                <details class="route-ctx" style={badgeVars(r.route_color)}>
+                  <summary>
+                    <span class="badge-bus">{r.id}</span>
+                    <span class="ctx-sum">
+                      <strong>{r.route_name}</strong>
+                      <span class="sub">{summaryFor(c)}{c.oneWay ? " (satu arah saja)" : ""}</span>
+                    </span>
+                    <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                  </summary>
+                  <div class="ctx-body">
+                    {c.rows.map(row => (
+                      <div class="ctx-dir">
+                        <p class="ctx-label">Arah {row.towards}</p>
+                        <ol class={`ctx-line ${row.prev ? "has-prev" : ""} ${row.next ? "has-next" : ""}`}>
+                          {row.prev
+                            ? <li class="ctx-stop"><a href={`/halte/${row.prev.id}`}>{row.prev.name}</a></li>
+                            : <li class="ctx-stop is-blank" aria-hidden="true"></li>}
+                          <li class="ctx-stop is-here">
+                            <span>{stop.name}</span>
+                            {(row.isFirst || row.isLast) && <em class="ctx-term">{row.isFirst ? "Halte awal" : "Halte akhir"}</em>}
+                          </li>
+                          {row.next
+                            ? <li class="ctx-stop"><a href={`/halte/${row.next.id}`}>{row.next.name}</a></li>
+                            : <li class="ctx-stop is-blank" aria-hidden="true"></li>}
+                        </ol>
+                      </div>
+                    ))}
+                    {c.oneWay && <p class="ctx-note">Rute ini hanya berhenti di halte ini pada satu arah. Untuk arah sebaliknya, cek halte lain di sekitar sini.</p>}
+                    <a class="ctx-more" href={`/rute/${r.slug}`}>Lihat rute {r.id} lengkap &rarr;</a>
+                  </div>
+                </details>
+              );
+            })}
           </div>
         </section>
       ))}
     </>
+  )}
+
+  {group && siblings.length > 0 && (
+    <section class="home-section">
+      <div class="section-head"><h2>Halte Lain di {group.name}</h2><a href={`/kawasan/${group.slug}`}>Lihat kawasan &rarr;</a></div>
+      <div class="grid near-grid">
+        {siblings.map(id => {
+          const rs = routesAt(id);
+          return (
+            <a href={`/halte/${id}`} class="near-card">
+              <span class="near-top"><b>{nameOf(id)}</b>{groupDist(id) && <span class="near-dist">{groupDist(id)}</span>}</span>
+              <span class="near-badges">
+                {rs.slice(0, 8).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+                {rs.length > 8 && <span class="service-more">+{rs.length - 8}</span>}
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  )}
+
+  {nearby.length > 0 && (
+    <section class="home-section">
+      <div class="section-head"><h2>Halte Terdekat</h2><span class="count">radius 500 m</span></div>
+      <div class="grid near-grid">
+        {nearby.map(n => {
+          const rs = routesAt(n.id);
+          return (
+            <a href={`/halte/${n.id}`} class="near-card">
+              <span class="near-top"><b>{nameOf(n.id)}</b><span class="near-dist">{formatDistance(n.distance)}</span></span>
+              <span class="near-badges">
+                {rs.slice(0, 8).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+                {rs.length > 8 && <span class="service-more">+{rs.length - 8}</span>}
+              </span>
+            </a>
+          );
+        })}
+      </div>
+      <p class="near-note">Jarak dihitung garis lurus. Rute jalan kaki sebenarnya bisa lebih jauh, terutama bila harus menyeberang jalan besar, tol, atau rel.</p>
+    </section>
   )}
 </BaseLayout>

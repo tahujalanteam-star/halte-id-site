@@ -32,20 +32,38 @@ function readJSON(relPath, fallback = undefined) {
   }
 }
 
+// Cache per proses build: ribuan halaman memanggil loader yang sama,
+// jadi file JSON cukup dibaca sekali.
+const _cache = new Map();
+function memo(key, fn) {
+  if (!_cache.has(key)) _cache.set(key, fn());
+  return _cache.get(key);
+}
+
 export function loadStops() {
-  return readJSON("stops.json");
+  return memo("stops", () => readJSON("stops.json"));
 }
 
 export function loadRoutesIndex() {
-  return readJSON("routes-index.json");
+  return memo("routes-index", () => readJSON("routes-index.json"));
 }
 
 export function loadRoute(id) {
-  return readJSON(`routes/${id}.json`);
+  return memo(`route:${id}`, () => readJSON(`routes/${id}.json`));
 }
 
 export function loadStopServices() {
-  return readJSON("stop-services.json", {});
+  return memo("stop-services", () => readJSON("stop-services.json", {}));
+}
+
+// Koordinat halte: { "<stopId>": { lng, lat, source, confidence } }. Opsional.
+export function loadStopCoords() {
+  return memo("stop-coords", () => readJSON("stop-coords.json", {}));
+}
+
+// Koreksi manual kelompok kawasan (opsional), lihat src/lib/stop-insights.js
+export function loadStopGroupOverrides() {
+  return memo("stop-groups", () => readJSON("stop-groups.json", {}));
 }
 
 // Geometri jalur ada di folder routes-geo/ dengan nama file sama seperti routes/

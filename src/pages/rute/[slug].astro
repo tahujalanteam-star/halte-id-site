@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { routeMapUrl } from "../../lib/map-utils.js";
 import {
   loadStops,
   loadRoutesIndex,
@@ -74,14 +75,7 @@ const PUBLIC_MAPBOX_TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 
 function staticMapUrl(dirId, dirIndex) {
   const geometry = getDirectionGeometry(jalur, dirId, dirIndex);
-  if (!PUBLIC_MAPBOX_TOKEN || !geometry) return null;
-  const line = {
-    type: "Feature",
-    properties: { stroke: route.route_color || "#D90429", "stroke-width": 4 },
-    geometry,
-  };
-  const encoded = encodeURIComponent(JSON.stringify(line));
-  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/geojson(${encoded})/auto/800x360?padding=30&access_token=${PUBLIC_MAPBOX_TOKEN}`;
+  return routeMapUrl(geometry, { color: route.route_color || "#D90429", token: PUBLIC_MAPBOX_TOKEN });
 }
 ---
 <BaseLayout
@@ -136,7 +130,7 @@ function staticMapUrl(dirId, dirIndex) {
             return (
               <li class={`stop-item ${stop.type === "brt" ? "is-brt-item" : "is-nonbrt-item"}`}>
                 <span class={stop.type === "brt" ? "stop-dot-brt" : "stop-dot-nonbrt"}></span>
-                <a class="stop-list-name" href={`/halte/${stopId}`}>{stop.name}</a>
+                <a class="stop-list-name" href={`/halte/${stopId}`}>{stop.name}{stop.split_by_direction && <span class="split-tag" title="Bangunan terpisah per arah: ganti arah harus tap out lalu tap in lagi">2 bangunan</span>}</a>
                 <div class="transfers-wrapper">
                   {[...tb.primary, ...tb.visible].map(t => (
                     t.href
@@ -173,6 +167,8 @@ function staticMapUrl(dirId, dirIndex) {
     .transfer-nonbrt, .transfer-jak { background: none; color: var(--text-sub); }
     .transfer-mrt { background-color: #db0000; }
     .transfer-krl { background-color: #db6300; }
+    .transfer-lrt { background-color: #c2185b; }
+    .transfer-kai { background-color: #1e3a8a; }
     .btn-toggle-routes { background: #f1f3f5; color: #495057; border: 1px solid #ced4da; border-radius: 4px; padding: 1px 6px;
       font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit; }
     .btn-toggle-routes:hover { background: #e9ecef; }
