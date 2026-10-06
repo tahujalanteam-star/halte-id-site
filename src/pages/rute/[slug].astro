@@ -15,6 +15,7 @@ import {
   readableText,
   categoryOf,
   categoryLabel,
+  routeLabel,
 } from "../../lib/data.js";
 
 export async function getStaticPaths() {
@@ -37,13 +38,20 @@ const MAX_VISIBLE_NON_BRT = 4;
 // Badge koneksi per halte diambil dari stops.json (stop.transfers) — data curated,
 // bukan stop-services.json. Rute utama (brt/mrt/krl/lrt/kai) selalu tampil;
 // rute non-BRT/JAK dibatasi 4, sisanya lewat tombol "+N rute".
-function transferBadges(stop) {
-  const list = (stop.transfers || []).filter(t => String(t.line) !== String(route.id));
+// Mikrotrans (JakLingko) tidak dicatat manual di stop.transfers: rute JAK yang berhenti di halte
+// yang sama ditambahkan otomatis dari stop-services.json.
+function transferBadges(stop, stopId) {
+  const curated = stop.transfers || [];
+  const have = new Set(curated.map(t => String(t.line)));
+  const autoJak = (stopServices[stopId] || [])
+    .filter(id => !have.has(String(id)) && categoryOf(routeLookup.get(String(id))?.entry) === "mikrotrans")
+    .map(id => ({ line: String(id), type: "jak" }));
+  const list = [...curated, ...autoJak].filter(t => String(t.line) !== String(route.id));
   const isNon = t => t.type === "nonbrt" || t.type === "jak";
   const decorate = t => {
     const info = routeLookup.get(String(t.line));
     return {
-      line: String(t.line),
+      line: info ? routeLabel(info.entry) : String(t.line),
       type: t.type,
       non: isNon(t),
       href: info && ["brt", "nonbrt", "jak"].includes(t.type) ? `/rute/${info.slug}` : null,
@@ -70,6 +78,10 @@ const transferStops = routeStopIds.filter(id => (stops[id]?.transfers || []).som
 const modes = [...new Set(routeStopIds.flatMap(id => (stops[id]?.transfers || []).map(t => t.type)))].filter(t => MODE_LABEL[t]).map(t => MODE_LABEL[t]);
 const heroInfo = [modes.length ? `Terhubung ke ${modes.join(", ")}` : null, transferStops.length ? `${transferStops.length} halte transit` : null].filter(Boolean).join(" · ");
 const category = categoryOf(summary);
+const routeName = summary.route_name || route.route_number;
+const badgeText = routeLabel(summary);
+// Tarif: Mikrotrans gratis (tetap tap kartu), Royaltrans tarif premium, lainnya tarif reguler
+const fare = category === "mikrotrans" ? "Rp0 (tap kartu)" : category === "royaltrans" ? "Rp20.000" : "Rp3.500";
 
 const PUBLIC_MAPBOX_TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 
@@ -79,11 +91,11 @@ function staticMapUrl(dirId, dirIndex) {
 }
 ---
 <BaseLayout
-  title={`Rute ${route.id} — ${route.route_number}`}
-  description={`Jadwal, tarif, dan daftar halte pemberhentian rute ${route.id} ${route.route_number}. ${operatingDays || ""} ${schedule ? `mulai ${schedule.first_departure} sampai ${schedule.last_departure}.` : ""}`}
+  title={`Rute ${badgeText} — ${routeName}`}
+  description={`Jadwal, tarif, dan daftar halte pemberhentian rute ${badgeText} ${routeName}. ${operatingDays || ""} ${schedule ? `mulai ${schedule.first_departure} sampai ${schedule.last_departure}.` : ""}`}
   canonicalPath={`/rute/${routeSlug(summary)}`}
 >
-  <div class="crumb"><a href="/rute">Daftar Rute</a> / <span>{route.id}</span></div>
+  <div class="crumb"><a href="/rute">Daftar Rute</a> / <span>{badgeText}</span></div>
 
   <header class="route-hero" style={badgeVars(route.route_color, "#2563eb")}>
     <svg class="hero-line" viewBox="0 0 400 160" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
@@ -93,17 +105,17 @@ function staticMapUrl(dirId, dirIndex) {
       <circle cx="330" cy="112" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
     </svg>
     <div class="hero-main">
-      <span class="hero-badge">{route.id}</span>
+      <span class="hero-badge">{badgeText}</span>
       <div class="hero-text">
         <p class="hero-kicker">{categoryLabel(category)}</p>
-        <h1>{route.route_number}</h1>
+        <h1>{routeName}</h1>
         {heroInfo && <p class="hero-sub">{heroInfo}</p>}
       </div>
     </div>
     <ul class="hero-chips">
       {operatingDays && <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="17" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 9.5h18"/></svg>{operatingDays}</li>}
       {schedule && <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>{schedule.first_departure} – {schedule.last_departure}</li>}
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16a2 2 0 0 1 2 2v2.2a2.5 2.5 0 0 0 0 4.6v2.2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2.2a2.5 2.5 0 0 0 0-4.6V7.5a2 2 0 0 1 2-2Z"/><path d="M9 12h6"/></svg>Rp3.500</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16a2 2 0 0 1 2 2v2.2a2.5 2.5 0 0 0 0 4.6v2.2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2.2a2.5 2.5 0 0 0 0-4.6V7.5a2 2 0 0 1 2-2Z"/><path d="M9 12h6"/></svg>{fare}</li>
       {summary.stops_count && <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{summary.stops_count} halte</li>}
     </ul>
   </header>
@@ -120,13 +132,13 @@ function staticMapUrl(dirId, dirIndex) {
           )}
         </div>
         {mapUrl && (
-          <img class="route-map" data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} loading="lazy" alt={`Peta jalur rute ${route.id} arah ${dir.title}`} width="800" height="360" />
+          <img class="route-map" data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} loading="lazy" alt={`Peta jalur rute ${badgeText} arah ${dir.title}`} width="800" height="360" />
         )}
         <ol class={`timeline${allNonBrt ? " nonbrt-line" : ""}`} style={`--route-color:${route.route_color || "#2563eb"};`}>
           {dir.stop_ids.map(stopId => {
             const stop = stops[stopId];
             if (!stop) return null;
-            const tb = transferBadges(stop);
+            const tb = transferBadges(stop, stopId);
             return (
               <li class={`stop-item ${stop.type === "brt" ? "is-brt-item" : "is-nonbrt-item"}`}>
                 <span class={stop.type === "brt" ? "stop-dot-brt" : "stop-dot-nonbrt"}></span>

@@ -1,7 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { stationList, primaryMode, modeInfo } from "../lib/rail.js";
-import { loadRoutesIndex, loadStops, routeSlug, compareCodes, badgeVars, readableText, categoryOf, groupByCategory, loadPlaces, placeCategoryLabel } from "../lib/data.js";
+import { routeLabel, loadRoutesIndex, loadStops, routeSlug, compareCodes, badgeVars, readableText, categoryOf, groupByCategory, loadPlaces, placeCategoryLabel } from "../lib/data.js";
 
 const routes = loadRoutesIndex().slice().sort((a, b) => compareCodes(a.id, b.id));
 const stops = loadStops();
@@ -11,13 +10,6 @@ const serviceGroups = groupByCategory(routes).filter(g => g.key !== "brt");
 const heroColors = corridors.slice(0, 4).map(r => r.route_color || "#2563eb");
 while (heroColors.length < 4) heroColors.push(["#D90429", "#354992", "#efc94b", "#1aa260"][heroColors.length]);
 
-// Indeks pencarian kecil (dibuat saat build)
-const searchIndex = [
-  ...routes.map(r => ({ t: "r", id: r.id, label: r.route_name, url: `/rute/${routeSlug(r)}`, c: r.route_color || "#334155", on: readableText(r.route_color || "#334155") })),
-  ...Object.entries(stops).map(([id, s]) => ({ t: "h", label: s.name, url: `/halte/${id}`, brt: s.type === "brt" })),
-  ...Object.entries(loadPlaces()).map(([slug, p]) => ({ t: "p", label: p.name, alias: (p.aliases || []).join(" | "), url: `/tempat/${slug}`, cat: placeCategoryLabel(p.category) })),
-  ...stationList().map(s => ({ t: "s", label: s.name, alias: s.short, url: `/stasiun/${s.slug}`, cat: modeInfo(primaryMode(s)).short, c: modeInfo(primaryMode(s)).color })),
-];
 ---
 <BaseLayout
   title={undefined}
@@ -82,7 +74,7 @@ const searchIndex = [
           <a href={`/rute#${g.key}`} class="service-card">
             <span class="service-top"><b>{g.label}</b><span class="count">{g.items.length} rute</span></span>
             <span class="service-badges">
-              {g.items.slice(0, 6).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+              {g.items.slice(0, 6).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{routeLabel(r)}</span>)}
               {g.items.length > 6 && <span class="service-more">+{g.items.length - 6}</span>}
             </span>
           </a>
@@ -106,16 +98,36 @@ const searchIndex = [
     </a>
   </section>
 
-  <script type="application/json" id="search-data" set:html={JSON.stringify(searchIndex)} />
   <script>
-    const data = JSON.parse(document.getElementById("search-data").textContent);
     const input = document.getElementById("site-search");
     const results = document.getElementById("search-results");
     const norm = s => s.toLowerCase();
+    const key = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    // Indeks diunduh sekali saat kotak pencarian pertama kali disentuh
+    let data = null, loading = null;
+    const load = () => (loading ||= fetch("/data/search.json").then(r => r.json()).then(d => {
+      data = [
+        ...d.r.map(([id, label, slug, c, on]) => ({ t: "r", id, label, url: `/rute/${slug}`, c, on })),
+        ...d.h.map(([label, id, brt]) => ({ t: "h", label, url: `/halte/${id}`, brt })),
+        ...d.p.map(([label, alias, slug, cat]) => ({ t: "p", label, alias, url: `/tempat/${slug}`, cat })),
+        ...d.s.map(([label, alias, slug, cat, c]) => ({ t: "s", label, alias, url: `/stasiun/${slug}`, cat, c })),
+      ];
+      render();
+    }).catch(() => { loading = null; }));
     const render = () => {
       const q = norm(input.value.trim());
       results.innerHTML = "";
       if (!q) { results.hidden = true; return; }
+      if (!data) {
+        load();
+        const li = document.createElement("li");
+        li.className = "empty";
+        li.textContent = "Memuat data…";
+        results.appendChild(li);
+        results.hidden = false;
+        return;
+      }
+      const qk = key(q);
       // Nomor rute yang persis cocok diletakkan paling atas
       const hits = data
         .map(it => {
@@ -123,8 +135,9 @@ const searchIndex = [
           const label = norm(it.label);
           const alias = it.alias ? norm(it.alias) : "";
           let score = -1;
-          if (id && id === q) score = 0;
-          else if (id && id.startsWith(q)) score = 1;
+          const idk = id ? key(id) : "";
+          if (id && (id === q || (qk && idk === qk))) score = 0;
+          else if (id && (id.startsWith(q) || (qk && idk.startsWith(qk)))) score = 1;
           else if (label.startsWith(q)) score = 2;
           else if (label.includes(q) || (alias && alias.includes(q))) score = 3;
           return { it, score };
@@ -171,7 +184,7 @@ const searchIndex = [
       results.hidden = false;
     };
     input.addEventListener("input", render);
-    input.addEventListener("focus", render);
+    input.addEventListener("focus", () => { load(); render(); });
     input.addEventListener("keydown", e => {
       if (e.key === "Enter") { const first = results.querySelector("a"); if (first) location.href = first.href; }
       if (e.key === "Escape") { results.hidden = true; }

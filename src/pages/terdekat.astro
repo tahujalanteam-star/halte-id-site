@@ -59,16 +59,25 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
     };
     const fmt = m => m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`;
     const walk = m => { const min = Math.max(1, Math.round(m / 80)); return min > 60 ? "" : `±${min} menit jalan kaki`; };
-    const badge = (id, r) => `<span class="badge-bus" style="--c:${r[2]};--on:${r[3]}">${esc(id)}</span>`;
+    const badge = (id, r) => `<span class="badge-bus" style="--c:${r[2]};--on:${r[3]}">${esc(r[5] || id)}</span>`;
 
-    let dataPromise = null;
-    const loadData = () => (dataPromise ||= fetch("/data/stops-geo.json").then(r => { if (!r.ok) throw new Error("data"); return r.json(); }));
+    // Data diunduh per petak 0,05° (±5,5 km): petak posisimu + 8 petak di sekelilingnya
+    const TILE = 0.05;
+    let routesPromise = null;
+    const loadRoutes = () => (routesPromise ||= fetch("/data/geo/routes.json").then(r => { if (!r.ok) throw new Error("data"); return r.json(); }));
+    const loadData = async (me) => {
+      const ty = Math.floor(me.lat / TILE), tx = Math.floor(me.lng / TILE);
+      const keys = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) keys.push(`${ty + dy}_${tx + dx}`);
+      const [r, ...tiles] = await Promise.all([loadRoutes(), ...keys.map(k => fetch(`/data/geo/${k}.json`).then(res => res.ok ? res.json() : []).catch(() => []))]);
+      return { r, s: tiles.flat() };
+    };
 
     function render(me, accuracy, data) {
       const all = data.s.map(s => ({ id: s[0], name: s[1], lat: s[2], lng: s[3], brt: s[4], routes: s[5] }))
         .map(s => ({ ...s, d: dist(me, s) })).sort((a, b) => a.d - b.d);
       const near = all.slice(0, 8);
-      if (!near.length) return setStatus("Data halte belum tersedia.", "is-error");
+      if (!near.length) return setStatus("Tidak ada halte Transjakarta dalam radius ±5 km dari posisimu. Sepertinya kamu berada di luar jangkauan layanan.", "is-warn");
       if (near[0].d > 5000) {
         setStatus(`Halte terdekat berjarak ${fmt(near[0].d)} dari posisimu. Sepertinya kamu berada di luar jangkauan layanan Transjakarta.`, "is-warn");
       } else statusEl.hidden = true;
@@ -92,7 +101,7 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       $("route-sec").innerHTML = byRoute.size ? `<h2 class="routes-near-title">Rute yang Bisa Kamu Naiki ${pool.length ? "dalam 500 m" : "di Sekitarmu"}</h2>` + groups.map(g => `
         <section class="home-section"><div class="section-head"><h3>${esc(g.label)}</h3><span class="count">${g.items.length}</span></div>
         <div class="area-routes">${g.items.map(([id, s]) => { const r = data.r[id]; return `
-          <div class="area-route"><a class="area-route-main" href="/rute/${r[0]}" style="--c:${r[2]};--on:${r[3]}"><span class="badge-bus">${esc(id)}</span><strong>${esc(r[1])}</strong></a>
+          <div class="area-route"><a class="area-route-main" href="/rute/${r[0]}" style="--c:${r[2]};--on:${r[3]}"><span class="badge-bus">${esc(r[5] || id)}</span><strong>${esc(r[1])}</strong></a>
           <p class="area-at">Naik di <a href="/halte/${encodeURIComponent(s.id)}">${esc(s.name)}</a> (${fmt(s.d)})</p></div>`; }).join("")}</div></section>`).join("") : "";
 
       // Peta opsional (1 gambar Mapbox, hanya bila diklik)
@@ -114,12 +123,13 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       if (!("geolocation" in navigator)) return setStatus("Browser ini tidak mendukung lokasi. Gunakan daftar halte di bawah.", "is-error");
       btn.disabled = true;
       setStatus("Mencari lokasimu… Izinkan akses lokasi bila browser bertanya.");
-      loadData().catch(() => {});
+      loadRoutes().catch(() => {});
       navigator.geolocation.getCurrentPosition(async pos => {
         btn.disabled = false;
         try {
-          const data = await loadData();
-          render({ lat: pos.coords.latitude, lng: pos.coords.longitude }, pos.coords.accuracy, data);
+          const me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          const data = await loadData(me);
+          render(me, pos.coords.accuracy, data);
         } catch { setStatus("Gagal memuat data halte. Coba lagi sebentar lagi.", "is-error"); }
       }, err => {
         btn.disabled = false;

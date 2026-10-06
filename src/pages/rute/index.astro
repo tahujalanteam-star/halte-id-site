@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { loadRoutesIndex, routeSlug, compareCodes, badgeVars, groupByCategory } from "../../lib/data.js";
+import { routeLabel, loadRoutesIndex, routeSlug, compareCodes, badgeVars, groupByCategory } from "../../lib/data.js";
 
 const routes = loadRoutesIndex().slice().sort((a, b) => compareCodes(a.id, b.id));
 const groups = groupByCategory(routes);
@@ -32,8 +32,8 @@ const groups = groupByCategory(routes);
         <div class="section-head"><h2>{g.label}</h2><span class="count">{g.items.length}</span></div>
         <div class="grid route-grid">
           {g.items.map(r => (
-            <a href={`/rute/${routeSlug(r)}`} class="card route-card" style={badgeVars(r.route_color)} data-name={`${r.id} ${r.route_name}`.toLowerCase()}>
-              <span class="badge-bus">{r.id}</span>
+            <a href={`/rute/${routeSlug(r)}`} class="card route-card" style={badgeVars(r.route_color)} data-name={`${r.id} ${routeLabel(r)} ${r.route_name}`.toLowerCase()}>
+              <span class="badge-bus">{routeLabel(r)}</span>
               <span class="route-card-body">
                 <strong class="route-card-name">{r.route_name}</strong>
                 <span class="sub">{r.stops_count} halte</span>

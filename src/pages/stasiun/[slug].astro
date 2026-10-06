@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, placeCategoryLabel, loadPlaces } from "../../lib/data.js";
+import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, placeCategoryLabel, loadPlaces } from "../../lib/data.js";
 import { coordOf, distanceM, formatDistance, compassDir, staticStopMap } from "../../lib/stop-insights.js";
 import { stationList, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, lineInfo, RAIL_MODES } from "../../lib/rail.js";
 
@@ -123,7 +123,7 @@ const intro = [
             <span class="near-top"><span class="near-num">{it.num}</span><b>{it.stop.name}</b>{it.stop.type === "brt" && <span class="near-dist is-brt">BRT</span>}</span>
             <span class="near-where">{formatDistance(it.distance)} · ke {it.dir} · ±{it.walk} menit jalan kaki</span>
             <span class="near-badges">
-              {it.routes.slice(0, 10).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+              {it.routes.slice(0, 10).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{routeLabel(r)}</span>)}
               {it.routes.length > 10 && <span class="service-more">+{it.routes.length - 10}</span>}
             </span>
           </a>
@@ -141,7 +141,7 @@ const intro = [
         {c.items.map(r => (
           <div class="area-route">
             <a href={`/rute/${r.slug}`} class="area-route-main" style={badgeVars(r.route_color)}>
-              <span class="badge-bus">{r.id}</span>
+              <span class="badge-bus">{routeLabel(r)}</span>
               <strong>{r.route_name}</strong>
             </a>
             <p class="area-at">Naik di <a href={`/halte/${r.at.id}`}>{r.at.stop.name}</a> ({formatDistance(r.at.distance)})</p>

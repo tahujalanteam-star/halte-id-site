@@ -1,0 +1,52 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { stopLetterPages } from "../../../lib/stop-pages.js";
+
+export function getStaticPaths() {
+  return stopLetterPages().map(p => ({ params: { huruf: p.slug }, props: { page: p } }));
+}
+const { page } = Astro.props;
+const pages = stopLetterPages();
+const brtCount = page.items.filter(([, s]) => s.type === "brt").length;
+const title = page.parts > 1 ? `Halte Berawalan ${page.letter} (${page.label})` : page.letter === "#" ? "Halte Berawalan Angka" : `Halte Berawalan Huruf ${page.letter}`;
+---
+<BaseLayout
+  title={`${title}: Daftar Halte Transjakarta & JakLingko`}
+  description={`Daftar ${page.items.length} halte bus Jakarta berawalan ${page.label}${brtCount ? `, termasuk ${brtCount} halte BRT` : ""}. Pilih halte untuk melihat rute yang berhenti di sana.`}
+  canonicalPath={`/halte/huruf/${page.slug}`}
+>
+  <div class="crumb"><a href="/halte">Daftar Halte</a> / <span>{page.label}</span></div>
+  <header class="page-head">
+    <p class="page-kicker">Daftar halte</p>
+    <h1>{title}</h1>
+    <p class="lead">{page.items.length} halte{brtCount ? `, ${brtCount} di antaranya halte BRT` : ""}.</p>
+    <div class="filter-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="stop-filter" type="search" autocomplete="off" placeholder="Saring halte di halaman ini…" aria-label="Saring halte" />
+    </div>
+    <nav class="letter-bar" aria-label="Pilih huruf">
+      {pages.map(p => <a href={`/halte/huruf/${p.slug}`} aria-current={p.slug === page.slug ? "page" : undefined}>{p.label}</a>)}
+    </nav>
+  </header>
+  <div class="grid stop-grid" id="stop-grid">
+    {page.items.map(([id, s]) => (
+      <a href={`/halte/${id}`} class={`stop-card ${s.type === "brt" ? "is-brt" : ""}`} data-name={s.name.toLowerCase()}>
+        <span class="stop-card-pin" aria-hidden="true"></span>
+        <span class="stop-card-name">{s.name}</span>
+        {s.type === "brt" && <span class="stop-card-tag">BRT</span>}
+      </a>
+    ))}
+  </div>
+  <p id="stop-empty" class="empty-state" hidden>Tidak ada halte yang cocok di halaman ini. Coba <a href="/">pencarian di beranda</a>.</p>
+  <script>
+    const input = document.getElementById("stop-filter");
+    const cards = Array.from(document.querySelectorAll("#stop-grid [data-name]"));
+    const empty = document.getElementById("stop-empty");
+    input.addEventListener("input", () => {
+      const q = input.value.trim().toLowerCase();
+      let n = 0;
+      cards.forEach(c => { const m = c.dataset.name.includes(q); c.hidden = !m; if (m) n++; });
+      empty.hidden = n !== 0;
+    });
+  </script>
+</BaseLayout>

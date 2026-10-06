@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
+import { routeLabel, placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { stationsForStop, primaryMode, modeInfo, lineInfo, CURATED_MATCH } from "../../lib/rail.js";
 import { routeContext, nearbyStops, placesNearStop, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
 
@@ -36,7 +36,10 @@ const nameOf = id => stops[id]?.name || id;
 const ctx = routeContext(stopId);
 // Satu baris per arah, dibaca kiri → kanan searah laju bus:
 // [┄ N halte] [sebelumnya] [KAMU DI SINI] ▶ [berikutnya] [┄ N halte] [halte akhir]
+// Rute melingkar (halte awal = halte akhir, banyak di Mikrotrans): judulnya "Melingkar, kembali ke X".
 function trackFor(o) {
+  const loop = o.firstId === o.lastId && o.total > 2;
+  const endRole = loop ? "kembali ke awal" : "halte akhir";
   const node = (id, state, role) => ({ kind: "node", id, name: nameOf(id), state, role });
   const items = [];
   if (o.pos > 0) {
@@ -47,26 +50,34 @@ function trackFor(o) {
   const isLast = o.pos === o.total - 1;
   if (!isLast) {
     const nextIsLast = o.pos + 1 === o.total - 1;
-    items.push(node(o.nextId, nextIsLast ? "term" : "next", nextIsLast ? "halte akhir" : ""));
+    items.push(node(o.nextId, nextIsLast ? "term" : "next", nextIsLast ? endRole : ""));
     const between = o.total - o.pos - 3;
     if (between > 0) items.push({ kind: "gap", count: between, state: "future", title: `${between} halte lagi sebelum ${nameOf(o.lastId)}` });
-    if (!nextIsLast) items.push(node(o.lastId, "term", "halte akhir"));
+    if (!nextIsLast) items.push(node(o.lastId, "term", endRole));
   }
-  return { towards: nameOf(o.lastId), from: nameOf(o.firstId), pos: o.pos + 1, total: o.total, isLast, items };
+  const towards = nameOf(o.lastId);
+  return {
+    loop, towards, items, isLast,
+    heading: loop ? `Melingkar, kembali ke ${towards}` : `Menuju ${towards}`,
+    meta: loop
+      ? (o.pos === 0 ? `halte awal putaran · ${o.total - 1} halte sekali putar` : `halte ke-${o.pos + 1} dari ${o.total - 1} dalam satu putaran`)
+      : `dari ${nameOf(o.firstId)} · halte ke-${o.pos + 1} dari ${o.total}`,
+  };
 }
 function contextFor(routeId) {
   const occ = ctx.get(String(routeId)) || [];
   const dirCount = occ[0]?.dirCount || 0;
   const dirsSeen = new Set(occ.map(o => o.dirIndex));
   return {
-    rows: occ.map(trackFor),
+    // Di rute melingkar halte awal juga muncul sebagai halte akhir; cukup tampilkan sebagai awal putaran
+    rows: occ.filter(o => !(o.firstId === o.lastId && o.pos === o.total - 1 && o.total > 2)).map(trackFor),
     oneWay: dirCount > 1 && dirsSeen.size === 1,
   };
 }
 function summaryFor(c) {
   if (!c.rows.length) return "";
-  const t = [...new Set(c.rows.map(r => r.towards))];
-  return t.map(x => `arah ${x}`).join(" · ");
+  const t = [...new Set(c.rows.map(r => r.loop ? `rute melingkar (${r.towards})` : `arah ${r.towards}`))];
+  return t.join(" · ");
 }
 
 // Kawasan & halte terdekat
@@ -200,7 +211,7 @@ const intro = [
               return (
                 <details class="route-ctx" style={badgeVars(r.route_color)}>
                   <summary>
-                    <span class="badge-bus">{r.id}</span>
+                    <span class="badge-bus">{routeLabel(r)}</span>
                     <span class="ctx-sum">
                       <strong>{r.route_name}</strong>
                       <span class="sub">{summaryFor(c)}{c.oneWay ? " (satu arah saja)" : ""}</span>
@@ -211,12 +222,12 @@ const intro = [
                     {c.rows.map(row => (
                       <div class="ctx-dir">
                         <div class="ctx-head">
-                          <p class="ctx-label">Menuju {row.towards}
+                          <p class="ctx-label">{row.heading}
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                           </p>
-                          <span class="ctx-pos">dari {row.from} · halte ke-{row.pos} dari {row.total}</span>
+                          <span class="ctx-pos">{row.meta}</span>
                         </div>
-                        <ol class="ctx-track" aria-label={`Urutan halte menuju ${row.towards}`}>
+                        <ol class="ctx-track" aria-label={`Urutan halte, ${row.heading.toLowerCase()}`}>
                           {row.items.map((it, i) => {
                             const prev = row.items[i - 1], next = row.items[i + 1];
                             const segL = prev ? (it.state === "past" || it.state === "here" ? "past" : "fut") : "";
@@ -240,7 +251,7 @@ const intro = [
                       </div>
                     ))}
                     {c.oneWay && <p class="ctx-note">Rute ini hanya berhenti di halte ini pada satu arah. Untuk arah sebaliknya, cek halte lain di sekitar sini.</p>}
-                    <a class="ctx-more" href={`/rute/${r.slug}`}>Lihat rute {r.id} lengkap &rarr;</a>
+                    <a class="ctx-more" href={`/rute/${r.slug}`}>Lihat rute {routeLabel(r)} lengkap &rarr;</a>
                   </div>
                 </details>
               );
@@ -276,7 +287,7 @@ const intro = [
               <span class="near-top">{numOf(id) && <span class="near-num">{numOf(id)}</span>}<b>{nameOf(id)}</b></span>
               {where(id) && <span class="near-where">{where(id)}</span>}
               <span class="near-badges">
-                {rs.slice(0, 8).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+                {rs.slice(0, 8).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{routeLabel(r)}</span>)}
                 {rs.length > 8 && <span class="service-more">+{rs.length - 8}</span>}
               </span>
             </a>
@@ -297,7 +308,7 @@ const intro = [
               <span class="near-top">{numOf(n.id) && <span class="near-num">{numOf(n.id)}</span>}<b>{nameOf(n.id)}</b></span>
               {where(n.id) && <span class="near-where">{where(n.id)}</span>}
               <span class="near-badges">
-                {rs.slice(0, 8).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+                {rs.slice(0, 8).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{routeLabel(r)}</span>)}
                 {rs.length > 8 && <span class="service-more">+{rs.length - 8}</span>}
               </span>
             </a>

@@ -1,28 +1,22 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { loadStops } from "../../lib/data.js";
+import { stopLetterPages } from "../../lib/stop-pages.js";
 
 const stops = loadStops();
-const entries = Object.entries(stops).sort((a, b) => a[1].name.localeCompare(b[1].name, "id"));
-const letterOf = name => { const c = name.trim().charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
-const groups = [];
-entries.forEach(([id, s]) => {
-  const L = letterOf(s.name);
-  let g = groups[groups.length - 1];
-  if (!g || g.letter !== L) { g = { letter: L, items: [] }; groups.push(g); }
-  g.items.push([id, s]);
-});
-const brtCount = entries.filter(([, s]) => s.type === "brt").length;
+const total = Object.keys(stops).length;
+const brt = Object.entries(stops).filter(([, s]) => s.type === "brt").sort((a, b) => a[1].name.localeCompare(b[1].name, "id", { numeric: true }));
+const pages = stopLetterPages();
 ---
 <BaseLayout
   title="Daftar Semua Halte Bus Jakarta"
-  description="Daftar lengkap seluruh halte Transjakarta dan JakLingko di Jakarta, cari berdasarkan nama halte."
+  description={`Daftar lengkap ${total} halte Transjakarta, Mikrotrans JakLingko, dan bus pengumpan di Jakarta. Cari berdasarkan nama halte atau huruf awal.`}
   canonicalPath="/halte"
 >
   <header class="page-head">
     <p class="page-kicker">Halte &amp; titik henti</p>
     <h1>Daftar Halte</h1>
-    <p class="lead">{entries.length} halte, termasuk {brtCount} halte BRT. Pilih halte untuk melihat semua rute yang berhenti di sana, atau lihat <a href="/kawasan">kawasan transit</a> untuk terminal dan halte yang berdekatan.</p>
+    <p class="lead">{total.toLocaleString("id-ID")} halte, termasuk {brt.length} halte BRT. Cari nama halte, pilih huruf awal, atau lihat <a href="/kawasan">kawasan transit</a> untuk terminal dan halte yang berdekatan.</p>
     <a href="/terdekat?cari=1" class="locate-btn locate-inline">
       <span class="lb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></span>
       <span class="lb-text"><b>Cari halte terdekat</b><span>Pakai lokasimu sekarang</span></span>
@@ -31,60 +25,60 @@ const brtCount = entries.filter(([, s]) => s.type === "brt").length;
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="stop-filter" type="search" autocomplete="off" placeholder="Cari nama halte…" aria-label="Cari halte" />
     </div>
-    <div class="filter-chips" role="group" aria-label="Jenis halte">
-      <button type="button" class="chip" data-kind="all" aria-pressed="true">Semua <span>{entries.length}</span></button>
-      <button type="button" class="chip" data-kind="brt" aria-pressed="false">Halte BRT <span>{brtCount}</span></button>
-      <button type="button" class="chip" data-kind="nonbrt" aria-pressed="false">Non-BRT <span>{entries.length - brtCount}</span></button>
-    </div>
-    <nav class="letter-bar" aria-label="Lompat ke huruf">
-      {groups.map(g => <a href={`#huruf-${g.letter === "#" ? "0" : g.letter}`}>{g.letter}</a>)}
-    </nav>
   </header>
 
-  <div id="stop-groups">
-    {groups.map(g => (
-      <section class="letter-group" id={`huruf-${g.letter === "#" ? "0" : g.letter}`}>
-        <h2 class="letter-head">{g.letter}</h2>
-        <div class="grid stop-grid">
-          {g.items.map(([id, s]) => (
-            <a href={`/halte/${id}`} class={`stop-card ${s.type === "brt" ? "is-brt" : ""}`} data-kind={s.type === "brt" ? "brt" : "nonbrt"} data-name={s.name.toLowerCase()}>
-              <span class="stop-card-pin" aria-hidden="true"></span>
-              <span class="stop-card-name">{s.name}</span>
-              {s.type === "brt" && <span class="stop-card-tag">BRT</span>}
-            </a>
-          ))}
-        </div>
-      </section>
-    ))}
+  <div id="stop-search" hidden>
+    <div class="grid stop-grid" id="stop-search-grid"></div>
+    <p id="stop-empty" class="empty-state" hidden>Tidak ada halte yang cocok. Coba kata kunci lain.</p>
   </div>
-  <p id="stop-empty" class="empty-state" hidden>Tidak ada halte yang cocok. Coba kata kunci lain.</p>
+
+  <div id="stop-browse">
+    <section class="home-section">
+      <div class="section-head"><h2>Berdasarkan Huruf Awal</h2></div>
+      <nav class="letter-tiles" aria-label="Daftar halte per huruf">
+        {pages.map(p => (
+          <a href={`/halte/huruf/${p.slug}`} title={p.parts > 1 ? p.label : undefined}>
+            <b>{p.letter === "#" ? "0–9" : p.letter}{p.parts > 1 && <sup>{p.part}</sup>}</b>
+            {p.parts > 1 && <small>{p.label}</small>}
+            <span>{p.items.length} halte</span>
+          </a>
+        ))}
+      </nav>
+    </section>
+    <section class="home-section">
+      <div class="section-head"><h2>Halte BRT</h2><span class="count">{brt.length}</span></div>
+      <div class="grid stop-grid">
+        {brt.map(([id, s]) => (
+          <a href={`/halte/${id}`} class="stop-card is-brt">
+            <span class="stop-card-pin" aria-hidden="true"></span>
+            <span class="stop-card-name">{s.name}</span>
+            <span class="stop-card-tag">BRT</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  </div>
 
   <script>
+    // Pencarian memakai indeks yang sama dengan beranda, diunduh saat kotak dicari pertama kali
     const input = document.getElementById("stop-filter");
-    const empty = document.getElementById("stop-empty");
-    const sections = Array.from(document.querySelectorAll(".letter-group"));
-    const chips = Array.from(document.querySelectorAll(".filter-chips .chip"));
-    const letterBar = document.querySelector(".letter-bar");
-    let kind = "all";
+    const box = document.getElementById("stop-search"), grid = document.getElementById("stop-search-grid");
+    const browse = document.getElementById("stop-browse"), empty = document.getElementById("stop-empty");
+    let stops = null, loading = null;
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const load = () => (loading ||= fetch("/data/search.json").then(r => r.json()).then(d => { stops = d.h; apply(); }).catch(() => { loading = null; }));
     const apply = () => {
       const q = input.value.trim().toLowerCase();
-      let total = 0;
-      sections.forEach(sec => {
-        let n = 0;
-        sec.querySelectorAll("[data-name]").forEach(card => {
-          const m = card.dataset.name.includes(q) && (kind === "all" || card.dataset.kind === kind);
-          card.hidden = !m; if (m) n++;
-        });
-        sec.hidden = n === 0; total += n;
-      });
-      empty.hidden = total !== 0;
-      letterBar.hidden = q !== "" || kind !== "all";
+      box.hidden = !q; browse.hidden = !!q;
+      if (!q) return;
+      if (!stops) { load(); grid.innerHTML = '<p class="near-note">Memuat data halte…</p>'; empty.hidden = true; return; }
+      const hits = stops.filter(s => s[0].toLowerCase().includes(q))
+        .sort((a, b) => (b[0].toLowerCase().startsWith(q)) - (a[0].toLowerCase().startsWith(q)) || b[2] - a[2] || a[0].localeCompare(b[0], "id"))
+        .slice(0, 60);
+      grid.innerHTML = hits.map(([name, id, isBrt]) => `<a href="/halte/${encodeURIComponent(id)}" class="stop-card${isBrt ? " is-brt" : ""}"><span class="stop-card-pin" aria-hidden="true"></span><span class="stop-card-name">${esc(name)}</span>${isBrt ? '<span class="stop-card-tag">BRT</span>' : ""}</a>`).join("");
+      empty.hidden = hits.length > 0;
     };
-    chips.forEach(c => c.addEventListener("click", () => {
-      kind = c.dataset.kind;
-      chips.forEach(x => x.setAttribute("aria-pressed", x === c ? "true" : "false"));
-      apply();
-    }));
+    input.addEventListener("focus", load);
     input.addEventListener("input", apply);
   </script>
 </BaseLayout>

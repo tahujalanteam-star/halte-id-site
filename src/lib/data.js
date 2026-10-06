@@ -142,7 +142,7 @@ function codeGroupAndKey(code) {
   let m;
   if (/^\d+$/.test(str)) return { group: 0, num: parseInt(str, 10) || 0 };
   if ((m = /^(\d+)([A-Za-z]+)$/.exec(str))) return { group: 1, num: parseInt(m[1], 10) || 0, letters: m[2].toUpperCase() };
-  if ((m = /^JAK(\d+)$/i.exec(str))) return { group: 4, num: parseInt(m[1], 10) || 0 };
+  if ((m = /^JAK\.?(\d+)([A-Za-z]*)$/i.exec(str))) return { group: 4, num: parseInt(m[1], 10) || 0, letters: m[2].toUpperCase() };
   if ((m = /^([A-Za-z])(\d+)$/.exec(str))) return { group: 2, letters: m[1].toUpperCase(), num: parseInt(m[2], 10) || 0 };
   if ((m = /^([A-Za-z]{2,})(\d+)$/.exec(str))) return { group: 3, letters: m[1].toUpperCase(), num: parseInt(m[2], 10) || 0 };
   if (/^[A-Za-z]+$/.test(str)) return { group: 6, letters: str.toUpperCase() };
@@ -155,9 +155,9 @@ export function compareCodes(codeA, codeB) {
   if (a.group !== b.group) return a.group - b.group;
   switch (a.group) {
     case 0:
-    case 4:
       return a.num - b.num;
     case 1:
+    case 4:
       return a.num - b.num || a.letters.localeCompare(b.letters);
     case 2:
     case 3:
@@ -190,8 +190,15 @@ export function routesForStop(stopId, stopServices, routeLookup) {
       slug,
       route_name: entry.route_name,
       route_color: entry.route_color,
+      route_number: entry.route_number,
       category: entry.category,
     }));
+}
+
+// Teks lencana rute: Mikrotrans tampil "JAK.79" (route_number), ID tetap "JAK79" untuk URL & data.
+export function routeLabel(r) {
+  const n = String(r?.route_number || "");
+  return /^JAK\./i.test(n) ? n : String(r?.id ?? "");
 }
 
 // ---- Warna lencana: pilih teks hitam/putih sesuai kecerahan warna rute (WCAG-ish).
@@ -216,7 +223,7 @@ export const ROUTE_CATEGORIES = [
   { key: "royaltrans", label: "Royaltrans" },
   { key: "transjabodetabek", label: "Transjabodetabek" },
   { key: "rusun", label: "Rumah Susun" },
-  { key: "mikrotrans", label: "Mikrotrans" },
+  { key: "mikrotrans", label: "Mikrotrans (JakLingko)" },
 ];
 const CATEGORY_KEYS = new Set(ROUTE_CATEGORIES.map(c => c.key));
 // Rute tanpa category (atau nilai tak dikenal) masuk "lainnya" dan tampil netral.

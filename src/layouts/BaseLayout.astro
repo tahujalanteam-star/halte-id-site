@@ -289,6 +289,17 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       .letter-bar a { display: grid; place-items: center; min-width: 30px; height: 30px; border-radius: 9px; font-size: .82rem; font-weight: 700;
         color: var(--text-sub); background: var(--card-bg); border: 1px solid var(--border-color); }
       .letter-bar a:hover { color: var(--primary); border-color: var(--primary); text-decoration: none; }
+      .letter-bar a { padding: 0 .45rem; }
+      .letter-bar a[aria-current="page"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+      .letter-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .45rem; }
+      .letter-tiles a { display: flex; flex-direction: column; align-items: center; gap: .1rem; padding: .6rem .4rem; border-radius: 14px; color: var(--text-main);
+        background: var(--card-bg); border: 1px solid var(--border-color); }
+      .letter-tiles a:hover { text-decoration: none; border-color: var(--primary); color: var(--primary); }
+      .letter-tiles a { min-width: 0; }
+      .letter-tiles b { font-size: 1.05rem; }
+      .letter-tiles sup { font-size: .62rem; margin-left: 1px; color: var(--text-sub); }
+      .letter-tiles small { max-width: 100%; font-size: .64rem; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .letter-tiles span { font-size: .72rem; color: var(--text-sub); font-weight: 600; }
       .letter-group { margin-bottom: 1.4rem; scroll-margin-top: 76px; }
       .route-group { scroll-margin-top: 76px; }
       .letter-head { display: flex; align-items: center; gap: .7rem; font-size: 1.15rem; color: var(--primary); margin: 0 0 .6rem; }
