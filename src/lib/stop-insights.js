@@ -186,8 +186,8 @@ export function staticStopMap({ main = [], others = [], token, width = 760, heig
   if (!token) return null;
   const pin = (size, color, c) => `pin-${size}${c.label != null ? `-${String(c.label).toLowerCase()}` : ""}+${color}(${c.lng.toFixed(5)},${c.lat.toFixed(5)})`;
   const pins = [
-    ...others.slice(0, 18).map(c => pin("s", "64748b", c)),
-    ...main.slice(0, 12).map(c => pin("l", "2563eb", c)),
+    ...others.slice(0, 18).map(c => pin("s", "6b7381", c)),
+    ...main.slice(0, 12).map(c => pin("l", "2652d9", c)),
   ];
   if (!pins.length) return null;
   const view = pins.length === 1 ? `${main[0].lng.toFixed(5)},${main[0].lat.toFixed(5)},16` : "auto";

@@ -99,8 +99,9 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       const slot = $("map-slot");
       slot.innerHTML = "";
       if (cfg.token) {
-        const pins = near.map((s, i) => `pin-s-${i + 1}+64748b(${s.lng.toFixed(5)},${s.lat.toFixed(5)})`).concat(`pin-l+16a34a(${me.lng.toFixed(5)},${me.lat.toFixed(5)})`).join(",");
-        const url = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${pins}/auto/760x340@2x?padding=50&access_token=${cfg.token}`;
+        const pins = near.map((s, i) => `pin-s-${i + 1}+6b7381(${s.lng.toFixed(5)},${s.lat.toFixed(5)})`).concat(`pin-l+16a34a(${me.lng.toFixed(5)},${me.lat.toFixed(5)})`).join(",");
+        const style = document.documentElement.getAttribute("data-theme") === "dark" ? "dark-v11" : "streets-v12";
+        const url = `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${pins}/auto/760x340@2x?padding=50&access_token=${cfg.token}`;
         slot.innerHTML = `<details class="map-toggle"><summary><span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span><span class="mt-text"><b>Lihat di peta</b><span>Posisimu (hijau) dan halte terdekat bernomor</span></span></summary><figure class="mini-map"><img alt="Peta posisimu dan halte terdekat" width="760" height="340"></figure></details>`;
         const d = slot.querySelector("details"), img = slot.querySelector("img");
         d.addEventListener("toggle", () => { if (d.open && !img.src) img.src = url; });

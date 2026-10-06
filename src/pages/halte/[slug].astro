@@ -120,7 +120,7 @@ const intro = [
         <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
       </summary>
       <figure class="mini-map">
-        <img data-src={mapUrl} alt={`Peta lokasi halte ${stop.name} dan halte di sekitarnya`} width="760" height="320" />
+        <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} alt={`Peta lokasi halte ${stop.name} dan halte di sekitarnya`} width="760" height="320" />
         <figcaption><span class="mm-dot is-main"></span>{stop.name} <span class="mm-dot"></span>halte sekitar (nomor sesuai daftar di bawah)
           <a href={`https://www.google.com/maps/search/?api=1&query=${me.lat},${me.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
         </figcaption>
@@ -132,7 +132,7 @@ const intro = [
     const box = document.getElementById("stop-map");
     if (box) {
       const img = box.querySelector("img[data-src]");
-      box.addEventListener("toggle", () => { if (box.open && img && !img.src) img.src = img.dataset.src; });
+      box.addEventListener("toggle", () => { if (box.open && img && !img.src) img.src = window.mapSrcFor ? window.mapSrcFor(img) : img.dataset.src; });
       try { localStorage.removeItem("stopMapOpen"); } catch (e) {}
     }
   </script>

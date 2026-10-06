@@ -56,7 +56,7 @@ const mapUrl = staticStopMap({ main: members.map((m, i) => { const c = coordOf(m
 
   {mapUrl && (
     <figure class="mini-map">
-      <img src={mapUrl} alt={`Peta halte-halte di ${group.name}`} width="760" height="320" loading="lazy" />
+      <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} data-autoload alt={`Peta halte-halte di ${group.name}`} width="760" height="320" loading="lazy" />
       <figcaption><span class="mm-dot is-main"></span>Halte di {group.name} (nomor sesuai daftar di bawah)</figcaption>
     </figure>
   )}
