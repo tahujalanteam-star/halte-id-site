@@ -128,16 +128,12 @@ const intro = [
     </details>
   )}
   <script>
-    // Peta baru diminta ke Mapbox saat dibuka (hemat kuota). Pilihan "buka" diingat di perangkat ini.
+    // Peta selalu tertutup saat halaman dibuka; gambar baru diminta ke Mapbox saat dibuka (hemat kuota).
     const box = document.getElementById("stop-map");
     if (box) {
       const img = box.querySelector("img[data-src]");
-      const load = () => { if (img && !img.src) img.src = img.dataset.src; };
-      box.addEventListener("toggle", () => {
-        if (box.open) load();
-        try { localStorage.setItem("stopMapOpen", box.open ? "1" : "0"); } catch (e) {}
-      });
-      try { if (localStorage.getItem("stopMapOpen") === "1") box.open = true; } catch (e) {}
+      box.addEventListener("toggle", () => { if (box.open && img && !img.src) img.src = img.dataset.src; });
+      try { localStorage.removeItem("stopMapOpen"); } catch (e) {}
     }
   </script>
 
