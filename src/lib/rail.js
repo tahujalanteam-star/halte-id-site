@@ -56,11 +56,12 @@ export function stationsNearPoint(pt, { radius = 400, limit = 6, exclude = [] } 
 }
 
 // Tipe transfer di stops.json (krl/mrt/lrt/kai) → moda stasiun yang cocok
-const CURATED_MATCH = {
+export const CURATED_MATCH = {
   krl: s => s.modes.includes("krl"),
   mrt: s => s.modes.includes("mrt"),
   lrt: s => s.modes.includes("lrt-jabodebek") || s.modes.includes("lrt-jakarta"),
-  kai: s => s.modes.includes("kai") || (s.lines || []).includes("krl-bandara"),
+  // "kai" di stops.json = kereta antarkota (Gambir, Pasar Senen, ...) dan Whoosh (line "Whoosh")
+  kai: s => s.modes.includes("kai") || s.modes.includes("whoosh"),
 };
 
 export const TRANSIT_RADIUS_M = 350;

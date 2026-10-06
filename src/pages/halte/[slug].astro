@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
-import { stationsForStop, primaryMode, modeInfo, lineInfo } from "../../lib/rail.js";
+import { stationsForStop, primaryMode, modeInfo, lineInfo, CURATED_MATCH } from "../../lib/rail.js";
 import { routeContext, nearbyStops, placesNearStop, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
 
 export async function getStaticPaths() {
@@ -20,12 +20,14 @@ const routeLookup = buildRouteLookup(loadRoutesIndex());
 const serving = routesForStop(stopId, stopServices, routeLookup);
 const typeLabel = stop.type === "brt" ? "Halte BRT" : "Halte Non-BRT";
 const isBrt = stop.type === "brt";
-const MODE = { mrt: { label: "MRT", color: "#db0000" }, lrt: { label: "LRT", color: "#c2185b" }, krl: { label: "KRL", color: "#db6300" }, kai: { label: "Kereta Bandara", color: "#1e3a8a" } };
+const MODE = { mrt: { label: "MRT", color: "#db0000" }, lrt: { label: "LRT", color: "#c2185b" }, krl: { label: "KRL", color: "#db6300" }, kai: { label: "KAI", color: "#1e3a8a" } };
 // Stasiun kereta terdekat (otomatis dari koordinat) + transfer tercatat di stops.json
 const rail = stationsForStop(stopId).map(s => ({ ...s, mode: modeInfo(primaryMode(s)) }));
+// Chip moda: dari stasiun yang terdeteksi; transfer tercatat yang tak punya stasiun di dekatnya tetap ditambahkan
 const modeMap = new Map();
-(stop.transfers || []).map(t => MODE[t.type]).filter(Boolean).forEach(m => modeMap.set(m.label, m));
 rail.forEach(s => { if (!modeMap.has(s.mode.short)) modeMap.set(s.mode.short, { label: s.mode.short, color: s.mode.color }); });
+(stop.transfers || []).filter(t => MODE[t.type] && !rail.some(s => CURATED_MATCH[t.type]?.(s)))
+  .forEach(t => { const m = t.line === "Whoosh" ? { label: "Whoosh", color: "#8c0023" } : MODE[t.type]; if (!modeMap.has(m.label)) modeMap.set(m.label, m); });
 const modes = [...modeMap.values()];
 const groups = groupByCategory(serving);
 const nameOf = id => stops[id]?.name || id;
