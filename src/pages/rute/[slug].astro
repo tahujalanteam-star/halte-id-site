@@ -1,6 +1,9 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { routeMapUrl } from "../../lib/map-utils.js";
+import { octiPath } from "../../lib/octi.js";
+// Aksen garis hero: segmen horizontal & diagonal 45° saja
+const HERO_LINE = octiPath([[-10, 124], [60, 124], [100, 84], [180, 84], [224, 40], [300, 40], [344, 84], [420, 84]], 7);
 import {
   loadStops,
   loadRoutesIndex,
@@ -99,10 +102,10 @@ function staticMapUrl(dirId, dirIndex) {
 
   <header class="route-hero" style={badgeVars(route.route_color, "#2563eb")}>
     <svg class="hero-line" viewBox="0 0 400 160" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
-      <path d="M-10 124 C 40 124, 60 84, 110 84 S 170 40, 220 40 S 280 112, 330 112 S 390 64, 420 64" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-      <circle cx="110" cy="84" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
-      <circle cx="220" cy="40" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
-      <circle cx="330" cy="112" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
+      <path d={HERO_LINE} fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="140" cy="84" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
+      <circle cx="262" cy="40" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
+      <circle cx="380" cy="84" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
     </svg>
     <div class="hero-main">
       <span class="hero-badge">{badgeText}</span>

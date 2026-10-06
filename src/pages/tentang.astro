@@ -1,5 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { octiPath } from "../lib/octi.js";
+const ABOUT_LINE = octiPath([[0, 80], [140, 80], [190, 30], [400, 30], [430, 60], [600, 60]], 14);
 
 // Alamat email kontak publik. Kosongkan kalau belum mau menampilkan kontak.
 const CONTACT_EMAIL = "tahujalanteam@gmail.com";
@@ -10,8 +12,8 @@ const CONTACT_EMAIL = "tahujalanteam@gmail.com";
   canonicalPath="/tentang"
 >
   <section class="about-hero">
-    <svg class="about-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0 80 C 120 80, 160 30, 300 30 S 480 90, 600 60" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+    <svg class="about-line" viewBox="0 0 600 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path d={ABOUT_LINE} fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <p class="page-kicker">Tentang kami</p>
     <h1>Tentang halte.id</h1>
