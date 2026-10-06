@@ -391,6 +391,19 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       .mini-map figcaption a { margin-left: auto; }
       .mm-dot { width: 10px; height: 10px; border-radius: 50%; background: #94a3b8; }
       .mm-dot.is-main { background: #2563eb; }
+      .map-toggle { margin: 0 0 1.8rem; border-radius: 18px; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: var(--shadow); overflow: hidden; }
+      .map-toggle summary { display: flex; align-items: center; gap: .75rem; padding: .7rem 1rem; cursor: pointer; list-style: none; }
+      .map-toggle summary::-webkit-details-marker { display: none; }
+      .map-toggle summary:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+      .map-toggle[open] summary { border-bottom: 1px solid var(--border-color); }
+      .map-toggle[open] .mt-text b::after { content: " (sembunyikan)"; font-weight: 600; color: var(--text-sub); }
+      .map-toggle[open] .ctx-chev { transform: rotate(180deg); }
+      .mt-icon { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+      .mt-icon svg { width: 19px; height: 19px; }
+      .mt-text { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.3; }
+      .mt-text b { font-size: .92rem; }
+      .mt-text span { font-size: .78rem; color: var(--text-sub); }
+      .map-toggle .mini-map { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
       .ctx-list { display: flex; flex-direction: column; gap: .5rem; }
       .route-ctx { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
       .route-ctx[open] { border-color: color-mix(in srgb, var(--c) 45%, var(--border-color)); }
@@ -434,6 +447,10 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       .near-dist { flex: none; font-size: .72rem; font-weight: 700; color: var(--text-sub); background: var(--badge-bg); padding: .1rem .5rem; border-radius: 999px; }
       .near-dist.is-brt { background: #dbeafe; color: #1d4ed8; }
       [data-theme="dark"] .near-dist.is-brt { background: #1e3a8a; color: #bfdbfe; }
+      .near-top b { flex: 1; }
+      .near-num { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: .72rem; font-weight: 800; color: #fff; background: #64748b; align-self: flex-start; }
+      .near-num.is-main { background: #2563eb; }
+      .near-where { font-size: .78rem; font-weight: 600; color: var(--text-sub); margin-top: -.25rem; }
       .near-badges { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
       .near-badges .badge-bus { min-width: 2.1rem; height: 1.6rem; font-size: .72rem; border-radius: 7px; padding: 0 .35rem; }
       .near-card .sub { font-size: .8rem; color: var(--text-sub); }
@@ -448,6 +465,37 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       @media (max-width: 640px) {
         .ctx-stop { font-size: .76rem; }
         .mini-map img { aspect-ratio: 4 / 3; }
+      }
+      /* ===== Halte terdekat ===== */
+      .home-search-row { display: flex; gap: .6rem; align-items: stretch; max-width: 760px; }
+      .home-search-row .home-search { flex: 1; max-width: none; }
+      .home-hero-inner { max-width: 780px; }
+      .home-hero h1 { max-width: 560px; }
+      .locate-btn { flex: none; display: flex; align-items: center; gap: .6rem; padding: 0 1rem 0 .7rem; height: 56px; border-radius: 18px; color: var(--text-main);
+        background: var(--card-bg); border: 2px solid color-mix(in srgb, var(--primary) 35%, var(--border-color)); box-shadow: 0 10px 24px -14px rgba(37,99,235,.45); transition: border-color .15s, transform .15s; }
+      .locate-btn:hover { text-decoration: none; border-color: var(--primary); transform: translateY(-1px); }
+      .lb-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: var(--primary); color: #fff; }
+      .lb-icon svg { width: 20px; height: 20px; }
+      .lb-text { display: flex; flex-direction: column; line-height: 1.2; }
+      .lb-text b { font-size: .92rem; }
+      .lb-text span { font-size: .74rem; color: var(--text-sub); font-weight: 600; }
+      .locate-inline { display: inline-flex; margin: 0 0 .9rem; }
+      .locate-main { margin-top: .4rem; padding: .8rem 1.3rem; font-size: 1rem; border-radius: 14px; }
+      .locate-main svg { width: 20px; height: 20px; }
+      .locate-main:disabled { opacity: .6; cursor: wait; }
+      .privacy-note { font-size: .8rem; color: var(--text-sub); margin: .7rem 0 0; }
+      .locate-status { margin: 0 0 1.4rem; padding: .8rem 1rem; border-radius: 14px; font-size: .9rem; background: color-mix(in srgb, var(--primary) 8%, var(--card-bg)); border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent); }
+      .locate-status.is-error { background: color-mix(in srgb, #dc2626 8%, var(--card-bg)); border-color: color-mix(in srgb, #dc2626 30%, transparent); }
+      .locate-status.is-warn { background: color-mix(in srgb, #f59e0b 10%, var(--card-bg)); border-color: color-mix(in srgb, #f59e0b 35%, transparent); }
+      #results { margin-bottom: 2rem; scroll-margin-top: 76px; }
+      #results .map-toggle { margin-bottom: 1rem; }
+      .nearest-card .near-top { color: var(--text-main); }
+      .nearest-card .near-top:hover { text-decoration: none; color: var(--primary); }
+      .nearest-actions { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .8rem; font-weight: 700; padding-top: .15rem; }
+      .routes-near-title { margin-top: 2rem; }
+      @media (max-width: 640px) {
+        .home-search-row { flex-direction: column; }
+        .locate-btn { height: 52px; }
       }
       /* Mobile: header ringkas + bottom tab bar */
       .tabbar { display: none; }
@@ -482,6 +530,7 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       <div class="container">
         <a href="/panduan">Panduan</a>
         <a href="/kawasan">Kawasan Transit</a>
+        <a href="/terdekat">Halte Terdekat</a>
         <a href="/tentang">Tentang</a>
         <a href="/kebijakan-privasi">Kebijakan Privasi</a>
         <span>&copy; {new Date().getFullYear()} halte.id — Panduan rute &amp; halte bus Jakarta, tidak berafiliasi resmi dengan Transjakarta.</span>

@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
-import { routeContext, nearbyStops, stopGroups, coordOf, distanceM, formatDistance, staticStopMap } from "../../lib/stop-insights.js";
+import { routeContext, nearbyStops, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
 
 export async function getStaticPaths() {
   const stops = loadStops();
@@ -56,11 +56,18 @@ const groupDist = id => (me && coordOf(id) ? formatDistance(distanceM(me, coordO
 const nearby = nearbyStops(stopId, { limit: 6, exclude: siblings });
 const routesAt = id => routesForStop(id, stopServices, routeLookup);
 
-// Peta mini
+// Peta mini: halte sekitar diberi nomor yang sama dengan nomor di kartu daftar
+const numbered = [...siblings, ...nearby.map(n => n.id)].slice(0, 18);
+const numOf = id => { const i = numbered.indexOf(id); return i >= 0 ? i + 1 : null; };
+const where = id => {
+  const c = coordOf(id);
+  if (!me || !c) return null;
+  return `${formatDistance(distanceM(me, c))} · ke ${compassDir(me, c)}`;
+};
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 const mapUrl = me ? staticStopMap({
   main: [me],
-  others: [...siblings, ...nearby.map(n => n.id)].map(coordOf).filter(Boolean),
+  others: numbered.map(id => { const c = coordOf(id); return c ? { ...c, label: numOf(id) } : null; }).filter(Boolean),
   token: TOKEN,
 }) : null;
 
@@ -106,13 +113,33 @@ const intro = [
   )}
 
   {mapUrl && (
-    <figure class="mini-map">
-      <img src={mapUrl} alt={`Peta lokasi halte ${stop.name} dan halte di sekitarnya`} width="760" height="320" loading="lazy" />
-      <figcaption><span class="mm-dot is-main"></span>{stop.name} <span class="mm-dot"></span>halte sekitar
-        <a href={`https://www.google.com/maps/search/?api=1&query=${me.lat},${me.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
-      </figcaption>
-    </figure>
+    <details class="map-toggle" id="stop-map">
+      <summary>
+        <span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
+        <span class="mt-text"><b>Tampilkan peta</b><span>Lokasi {stop.name} dan {nearby.length + siblings.length} halte sekitar</span></span>
+        <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <figure class="mini-map">
+        <img data-src={mapUrl} alt={`Peta lokasi halte ${stop.name} dan halte di sekitarnya`} width="760" height="320" />
+        <figcaption><span class="mm-dot is-main"></span>{stop.name} <span class="mm-dot"></span>halte sekitar (nomor sesuai daftar di bawah)
+          <a href={`https://www.google.com/maps/search/?api=1&query=${me.lat},${me.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
+        </figcaption>
+      </figure>
+    </details>
   )}
+  <script>
+    // Peta baru diminta ke Mapbox saat dibuka (hemat kuota). Pilihan "buka" diingat di perangkat ini.
+    const box = document.getElementById("stop-map");
+    if (box) {
+      const img = box.querySelector("img[data-src]");
+      const load = () => { if (img && !img.src) img.src = img.dataset.src; };
+      box.addEventListener("toggle", () => {
+        if (box.open) load();
+        try { localStorage.setItem("stopMapOpen", box.open ? "1" : "0"); } catch (e) {}
+      });
+      try { if (localStorage.getItem("stopMapOpen") === "1") box.open = true; } catch (e) {}
+    }
+  </script>
 
   {serving.length === 0 ? (
     <p class="lead">Belum ada data rute untuk halte ini.</p>
@@ -172,7 +199,8 @@ const intro = [
           const rs = routesAt(id);
           return (
             <a href={`/halte/${id}`} class="near-card">
-              <span class="near-top"><b>{nameOf(id)}</b>{groupDist(id) && <span class="near-dist">{groupDist(id)}</span>}</span>
+              <span class="near-top">{numOf(id) && <span class="near-num">{numOf(id)}</span>}<b>{nameOf(id)}</b></span>
+              {where(id) && <span class="near-where">{where(id)}</span>}
               <span class="near-badges">
                 {rs.slice(0, 8).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
                 {rs.length > 8 && <span class="service-more">+{rs.length - 8}</span>}
@@ -192,7 +220,8 @@ const intro = [
           const rs = routesAt(n.id);
           return (
             <a href={`/halte/${n.id}`} class="near-card">
-              <span class="near-top"><b>{nameOf(n.id)}</b><span class="near-dist">{formatDistance(n.distance)}</span></span>
+              <span class="near-top">{numOf(n.id) && <span class="near-num">{numOf(n.id)}</span>}<b>{nameOf(n.id)}</b></span>
+              {where(n.id) && <span class="near-where">{where(n.id)}</span>}
               <span class="near-badges">
                 {rs.slice(0, 8).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
                 {rs.length > 8 && <span class="service-more">+{rs.length - 8}</span>}
@@ -201,7 +230,7 @@ const intro = [
           );
         })}
       </div>
-      <p class="near-note">Jarak dihitung garis lurus. Rute jalan kaki sebenarnya bisa lebih jauh, terutama bila harus menyeberang jalan besar, tol, atau rel.</p>
+      <p class="near-note">Nomor sesuai pin di peta. Jarak dihitung garis lurus. Rute jalan kaki sebenarnya bisa lebih jauh, terutama bila harus menyeberang jalan besar, tol, atau rel.</p>
     </section>
   )}
 </BaseLayout>

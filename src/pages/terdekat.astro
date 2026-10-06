@@ -1,0 +1,135 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { ROUTE_CATEGORIES } from "../lib/data.js";
+import { stopGroups } from "../lib/stop-insights.js";
+
+const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN || "";
+const topAreas = stopGroups().groups.filter(g => g.hasTerminal).slice(0, 12);
+const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
+---
+<BaseLayout
+  title="Halte Bus Terdekat dari Lokasimu"
+  description="Cari halte bus Transjakarta terdekat dari lokasimu sekarang: jarak, arah jalan kaki, dan rute apa saja yang bisa dinaiki di sekitarmu. Lokasi diproses di perangkatmu, tidak dikirim ke server."
+  canonicalPath="/terdekat"
+>
+  <header class="page-head">
+    <p class="page-kicker">Di sekitarmu</p>
+    <h1>Halte Bus Terdekat</h1>
+    <p class="lead">Temukan halte Transjakarta terdekat dari posisimu sekarang, lengkap dengan jarak, arah jalan kaki, dan rute yang bisa kamu naiki.</p>
+    <button id="locate" type="button" class="btn btn-primary locate-main">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+      Gunakan lokasiku
+    </button>
+    <p class="privacy-note">Lokasimu hanya diproses di perangkat ini untuk menghitung jarak. Tidak dikirim ke server dan tidak disimpan.</p>
+  </header>
+
+  <div id="status" class="locate-status" role="status" aria-live="polite" hidden></div>
+
+  <section id="results" hidden>
+    <div class="section-head"><h2>Halte Terdekat</h2><span class="count" id="acc"></span></div>
+    <div id="map-slot"></div>
+    <div id="stop-list" class="grid near-grid"></div>
+    <p class="near-note">Jarak dihitung garis lurus dari posisimu. Waktu jalan kaki adalah perkiraan (±80 m per menit).</p>
+    <div id="route-sec"></div>
+  </section>
+
+  <section class="home-section" id="fallback">
+    <h2>Tidak bisa memakai lokasi?</h2>
+    <p class="lead">Cari lewat <a href="/halte">daftar halte</a> atau <a href="/rute">daftar rute</a>, atau mulai dari kawasan transit besar berikut:</p>
+    <div class="grid near-grid">
+      {topAreas.map(g => (
+        <a href={`/kawasan/${g.slug}`} class="near-card"><span class="near-top"><b>{g.name}</b></span><span class="sub">{g.stopIds.length} halte berdekatan</span></a>
+      ))}
+    </div>
+  </section>
+
+  <script type="application/json" id="cfg" set:html={JSON.stringify({ token: TOKEN, cats })} />
+  <script>
+    const cfg = JSON.parse(document.getElementById("cfg").textContent);
+    const $ = id => document.getElementById(id);
+    const btn = $("locate"), statusEl = $("status"), results = $("results");
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const setStatus = (html, kind = "") => { statusEl.hidden = false; statusEl.className = "locate-status " + kind; statusEl.innerHTML = html; };
+    const R = 6371000, rad = x => x * Math.PI / 180;
+    const dist = (a, b) => { const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+    const dirOf = (a, b) => {
+      const y = Math.sin(rad(b.lng - a.lng)) * Math.cos(rad(b.lat));
+      const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(rad(b.lng - a.lng));
+      return ["utara", "timur laut", "timur", "tenggara", "selatan", "barat daya", "barat", "barat laut"][Math.round(((Math.atan2(y, x) * 180 / Math.PI + 360) % 360) / 45) % 8];
+    };
+    const fmt = m => m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`;
+    const walk = m => { const min = Math.max(1, Math.round(m / 80)); return min > 60 ? "" : `±${min} menit jalan kaki`; };
+    const badge = (id, r) => `<span class="badge-bus" style="--c:${r[2]};--on:${r[3]}">${esc(id)}</span>`;
+
+    let dataPromise = null;
+    const loadData = () => (dataPromise ||= fetch("/data/stops-geo.json").then(r => { if (!r.ok) throw new Error("data"); return r.json(); }));
+
+    function render(me, accuracy, data) {
+      const all = data.s.map(s => ({ id: s[0], name: s[1], lat: s[2], lng: s[3], brt: s[4], routes: s[5] }))
+        .map(s => ({ ...s, d: dist(me, s) })).sort((a, b) => a.d - b.d);
+      const near = all.slice(0, 8);
+      if (!near.length) return setStatus("Data halte belum tersedia.", "is-error");
+      if (near[0].d > 5000) {
+        setStatus(`Halte terdekat berjarak ${fmt(near[0].d)} dari posisimu. Sepertinya kamu berada di luar jangkauan layanan Transjakarta.`, "is-warn");
+      } else statusEl.hidden = true;
+      $("acc").textContent = accuracy ? `akurasi lokasi ±${Math.round(accuracy)} m` : "";
+      $("stop-list").innerHTML = near.map((s, i) => {
+        const rs = s.routes.filter(id => data.r[id]);
+        return `<div class="near-card nearest-card">
+          <a class="near-top" href="/halte/${encodeURIComponent(s.id)}"><span class="near-num">${i + 1}</span><b>${esc(s.name)}</b>${s.brt ? '<span class="near-dist is-brt">BRT</span>' : ""}</a>
+          <span class="near-where">${fmt(s.d)} · ke ${dirOf(me, s)}${walk(s.d) ? " · " + walk(s.d) : ""}</span>
+          <span class="near-badges">${rs.slice(0, 10).map(id => badge(id, data.r[id])).join("")}${rs.length > 10 ? `<span class="service-more">+${rs.length - 10}</span>` : ""}</span>
+          <span class="nearest-actions"><a href="/halte/${encodeURIComponent(s.id)}">Detail halte</a><a href="https://www.google.com/maps/dir/?api=1&origin=${me.lat},${me.lng}&destination=${s.lat},${s.lng}&travelmode=walking" target="_blank" rel="noopener nofollow">Petunjuk jalan kaki ↗</a></span>
+        </div>`;
+      }).join("");
+
+      // Rute dalam radius 500 m (atau 3 halte terdekat bila tak ada) — dari halte terdekat masing-masing
+      const pool = all.filter(s => s.d <= 500);
+      const src = pool.length ? pool : near.slice(0, 3);
+      const byRoute = new Map();
+      for (const s of src) for (const id of s.routes) if (data.r[id] && !byRoute.has(id)) byRoute.set(id, s);
+      const groups = cfg.cats.map(c => ({ ...c, items: [...byRoute].filter(([id]) => (data.r[id][4] || "lainnya") === c.key) })).filter(g => g.items.length);
+      $("route-sec").innerHTML = byRoute.size ? `<h2 class="routes-near-title">Rute yang Bisa Kamu Naiki ${pool.length ? "dalam 500 m" : "di Sekitarmu"}</h2>` + groups.map(g => `
+        <section class="home-section"><div class="section-head"><h3>${esc(g.label)}</h3><span class="count">${g.items.length}</span></div>
+        <div class="area-routes">${g.items.map(([id, s]) => { const r = data.r[id]; return `
+          <div class="area-route"><a class="area-route-main" href="/rute/${r[0]}" style="--c:${r[2]};--on:${r[3]}"><span class="badge-bus">${esc(id)}</span><strong>${esc(r[1])}</strong></a>
+          <p class="area-at">Naik di <a href="/halte/${encodeURIComponent(s.id)}">${esc(s.name)}</a> (${fmt(s.d)})</p></div>`; }).join("")}</div></section>`).join("") : "";
+
+      // Peta opsional (1 gambar Mapbox, hanya bila diklik)
+      const slot = $("map-slot");
+      slot.innerHTML = "";
+      if (cfg.token) {
+        const pins = near.map((s, i) => `pin-s-${i + 1}+64748b(${s.lng.toFixed(5)},${s.lat.toFixed(5)})`).concat(`pin-l+16a34a(${me.lng.toFixed(5)},${me.lat.toFixed(5)})`).join(",");
+        const url = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${pins}/auto/760x340@2x?padding=50&access_token=${cfg.token}`;
+        slot.innerHTML = `<details class="map-toggle"><summary><span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span><span class="mt-text"><b>Lihat di peta</b><span>Posisimu (hijau) dan halte terdekat bernomor</span></span></summary><figure class="mini-map"><img alt="Peta posisimu dan halte terdekat" width="760" height="340"></figure></details>`;
+        const d = slot.querySelector("details"), img = slot.querySelector("img");
+        d.addEventListener("toggle", () => { if (d.open && !img.src) img.src = url; });
+      }
+      results.hidden = false;
+      results.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function locate() {
+      if (!("geolocation" in navigator)) return setStatus("Browser ini tidak mendukung lokasi. Gunakan daftar halte di bawah.", "is-error");
+      btn.disabled = true;
+      setStatus("Mencari lokasimu… Izinkan akses lokasi bila browser bertanya.");
+      loadData().catch(() => {});
+      navigator.geolocation.getCurrentPosition(async pos => {
+        btn.disabled = false;
+        try {
+          const data = await loadData();
+          render({ lat: pos.coords.latitude, lng: pos.coords.longitude }, pos.coords.accuracy, data);
+        } catch { setStatus("Gagal memuat data halte. Coba lagi sebentar lagi.", "is-error"); }
+      }, err => {
+        btn.disabled = false;
+        const msg = err.code === 1
+          ? "Akses lokasi ditolak. Kamu bisa mengizinkannya lewat ikon gembok di bilah alamat browser, atau cari manual lewat daftar di bawah."
+          : err.code === 3 ? "Lokasi terlalu lama ditemukan. Coba lagi, sebaiknya di area terbuka." : "Lokasi tidak bisa ditentukan. Coba lagi atau cari manual lewat daftar di bawah.";
+        setStatus(msg, "is-error");
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    }
+    btn.addEventListener("click", locate);
+    // Dari tombol di beranda: /terdekat?cari=1 langsung meminta lokasi
+    if (new URLSearchParams(location.search).get("cari") === "1") locate();
+  </script>
+</BaseLayout>

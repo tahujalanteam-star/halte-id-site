@@ -22,7 +22,7 @@ const UPDATED = "5 Oktober 2026";
     <ul>
       <li><b>Tanpa akun.</b> Tidak ada pendaftaran, formulir, atau kolom komentar.</li>
       <li><b>Tanpa data pribadi.</b> Kami tidak meminta nama, email, atau nomor telepon untuk memakai situs ini.</li>
-      <li><b>Satu pengaturan lokal.</b> Hanya pilihan tema terang/gelap yang disimpan di perangkat Anda.</li>
+      <li><b>Pengaturan lokal saja.</b> Hanya pilihan tampilan (tema, peta terbuka/tertutup) yang disimpan di perangkat Anda. Lokasi untuk fitur Halte Terdekat tidak pernah dikirim atau disimpan.</li>
       <li><b>Pihak ketiga.</b> Iklan (Google AdSense), peta (Mapbox), dan hosting (Cloudflare) diatur kebijakan masing-masing.</li>
     </ul>
   </section>
@@ -34,6 +34,7 @@ const UPDATED = "5 Oktober 2026";
         <li><a href="#data-yang-dikumpulkan-otomatis">Data yang Dikumpulkan Otomatis</a></li>
         <li><a href="#penyimpanan-di-perangkat-anda">Penyimpanan di Perangkat Anda</a></li>
         <li><a href="#cookies-dan-iklan-pihak-ketiga">Cookies dan Iklan Pihak Ketiga</a></li>
+        <li><a href="#lokasi-perangkat">Lokasi Perangkat</a></li>
         <li><a href="#peta-dan-layanan-pihak-ketiga-lainnya">Peta dan Layanan Pihak Ketiga Lainnya</a></li>
         <li><a href="#tautan-ke-situs-lain">Tautan ke Situs Lain</a></li>
         <li><a href="#anak-anak">Anak-anak</a></li>
@@ -82,8 +83,18 @@ const UPDATED = "5 Oktober 2026";
         </li>
       </ul>
       </section>
+      <section id="lokasi-perangkat" class="doc-section">
+        <h2><span class="doc-num">04</span>Lokasi Perangkat (Fitur Halte Terdekat)</h2>
+        <p>
+          Fitur Halte Terdekat meminta izin lokasi perangkat Anda hanya setelah Anda menekan tombolnya. Lokasi
+          diproses sepenuhnya di peramban Anda untuk menghitung jarak ke halte, tidak dikirim ke server kami, dan
+          tidak disimpan. Jika Anda membuka peta pada fitur ini, gambar peta dimuat dari Mapbox dan permintaannya
+          memuat koordinat lokasi Anda agar posisi dapat ditandai di peta. Anda dapat menolak atau mencabut izin
+          lokasi kapan saja melalui pengaturan peramban.
+        </p>
+      </section>
       <section id="peta-dan-layanan-pihak-ketiga-lainnya" class="doc-section">
-        <h2><span class="doc-num">04</span>Peta dan Layanan Pihak Ketiga Lainnya</h2>
+        <h2><span class="doc-num">05</span>Peta dan Layanan Pihak Ketiga Lainnya</h2>
       <p>
         Peta jalur rute di halaman rute ditampilkan sebagai gambar dari Mapbox. Saat gambar itu dimuat,
         peramban Anda terhubung ke server Mapbox sehingga Mapbox menerima data teknis seperti alamat IP.
@@ -92,27 +103,27 @@ const UPDATED = "5 Oktober 2026";
       </p>
       </section>
       <section id="tautan-ke-situs-lain" class="doc-section">
-        <h2><span class="doc-num">05</span>Tautan ke Situs Lain</h2>
+        <h2><span class="doc-num">06</span>Tautan ke Situs Lain</h2>
       <p>
         Halaman kami dapat memuat tautan ke situs lain. Kami tidak mengendalikan isi maupun praktik privasi
         situs tersebut, dan sebaiknya Anda membaca kebijakan privasi masing-masing.
       </p>
       </section>
       <section id="anak-anak" class="doc-section">
-        <h2><span class="doc-num">06</span>Anak-anak</h2>
+        <h2><span class="doc-num">07</span>Anak-anak</h2>
       <p>
         Situs ini ditujukan untuk umum dan tidak secara sengaja mengumpulkan data pribadi dari anak-anak.
       </p>
       </section>
       <section id="perubahan-kebijakan" class="doc-section">
-        <h2><span class="doc-num">07</span>Perubahan Kebijakan</h2>
+        <h2><span class="doc-num">08</span>Perubahan Kebijakan</h2>
       <p>
         Kebijakan ini dapat diperbarui sewaktu-waktu. Tanggal pembaruan terakhir tercantum di bagian atas
         halaman ini.
       </p>
       </section>
       <section id="kontak" class="doc-section">
-        <h2><span class="doc-num">08</span>Kontak</h2>
+        <h2><span class="doc-num">09</span>Kontak</h2>
       <p>
         {CONTACT_EMAIL
           ? <>Pertanyaan tentang kebijakan ini dapat dikirim ke <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</>

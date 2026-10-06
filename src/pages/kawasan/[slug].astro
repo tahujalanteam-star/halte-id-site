@@ -25,7 +25,7 @@ const cats = groupByCategory(allRoutes);
 const brtCount = members.filter(m => m.stop.type === "brt").length;
 
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
-const mapUrl = staticStopMap({ main: members.map(m => coordOf(m.id)).filter(Boolean), token: TOKEN });
+const mapUrl = staticStopMap({ main: members.map((m, i) => { const c = coordOf(m.id); return c ? { ...c, label: i + 1 } : null; }).filter(Boolean), token: TOKEN });
 ---
 <BaseLayout
   title={`${group.name}: Halte & Rute Transjakarta`}
@@ -57,16 +57,16 @@ const mapUrl = staticStopMap({ main: members.map(m => coordOf(m.id)).filter(Bool
   {mapUrl && (
     <figure class="mini-map">
       <img src={mapUrl} alt={`Peta halte-halte di ${group.name}`} width="760" height="320" loading="lazy" />
-      <figcaption><span class="mm-dot is-main"></span>Halte di {group.name}</figcaption>
+      <figcaption><span class="mm-dot is-main"></span>Halte di {group.name} (nomor sesuai daftar di bawah)</figcaption>
     </figure>
   )}
 
   <section class="home-section">
     <div class="section-head"><h2>Halte di Kawasan Ini</h2><span class="count">{members.length}</span></div>
     <div class="grid near-grid">
-      {members.map(m => (
+      {members.map((m, i) => (
         <a href={`/halte/${m.id}`} class="near-card">
-          <span class="near-top"><b>{m.stop.name}</b><span class={`near-dist ${m.stop.type === "brt" ? "is-brt" : ""}`}>{m.stop.type === "brt" ? "BRT" : "Non-BRT"}</span></span>
+          <span class="near-top"><span class="near-num is-main">{i + 1}</span><b>{m.stop.name}</b><span class={`near-dist ${m.stop.type === "brt" ? "is-brt" : ""}`}>{m.stop.type === "brt" ? "BRT" : "Non-BRT"}</span></span>
           <span class="near-badges">
             {m.routes.slice(0, 10).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
             {m.routes.length > 10 && <span class="service-more">+{m.routes.length - 10}</span>}

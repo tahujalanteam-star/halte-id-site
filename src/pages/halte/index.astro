@@ -23,6 +23,10 @@ const brtCount = entries.filter(([, s]) => s.type === "brt").length;
     <p class="page-kicker">Halte &amp; titik henti</p>
     <h1>Daftar Halte</h1>
     <p class="lead">{entries.length} halte, termasuk {brtCount} halte BRT. Pilih halte untuk melihat semua rute yang berhenti di sana, atau lihat <a href="/kawasan">kawasan transit</a> untuk terminal dan halte yang berdekatan.</p>
+    <a href="/terdekat?cari=1" class="locate-btn locate-inline">
+      <span class="lb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></span>
+      <span class="lb-text"><b>Cari halte terdekat</b><span>Pakai lokasimu sekarang</span></span>
+    </a>
     <div class="filter-box">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="stop-filter" type="search" autocomplete="off" placeholder="Cari nama halte…" aria-label="Cari halte" />

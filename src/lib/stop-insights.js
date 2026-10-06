@@ -170,12 +170,24 @@ export function stopGroups() {
   });
 }
 
-// URL gambar peta statis Mapbox: titik utama + titik lain (abu-abu)
+// Arah mata angin dari a ke b (8 arah, bahasa Indonesia)
+export function compassDir(a, b) {
+  const toRad = x => (x * Math.PI) / 180;
+  const y = Math.sin(toRad(b.lng - a.lng)) * Math.cos(toRad(b.lat));
+  const x = Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) - Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(toRad(b.lng - a.lng));
+  const deg = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  return ["utara", "timur laut", "timur", "tenggara", "selatan", "barat daya", "barat", "barat laut"][Math.round(deg / 45) % 8];
+}
+
+// URL gambar peta statis Mapbox.
+// main/others: [{ lng, lat, label? }] — label (1–99 atau huruf) tampil di dalam pin,
+// dipakai agar nomor di peta cocok dengan nomor di daftar halte.
 export function staticStopMap({ main = [], others = [], token, width = 760, height = 320 }) {
   if (!token) return null;
+  const pin = (size, color, c) => `pin-${size}${c.label != null ? `-${String(c.label).toLowerCase()}` : ""}+${color}(${c.lng.toFixed(5)},${c.lat.toFixed(5)})`;
   const pins = [
-    ...others.slice(0, 18).map(c => `pin-s+94a3b8(${c.lng.toFixed(5)},${c.lat.toFixed(5)})`),
-    ...main.slice(0, 12).map(c => `pin-l+2563eb(${c.lng.toFixed(5)},${c.lat.toFixed(5)})`),
+    ...others.slice(0, 18).map(c => pin("s", "64748b", c)),
+    ...main.slice(0, 12).map(c => pin("l", "2563eb", c)),
   ];
   if (!pins.length) return null;
   const view = pins.length === 1 ? `${main[0].lng.toFixed(5)},${main[0].lat.toFixed(5)},16` : "auto";
