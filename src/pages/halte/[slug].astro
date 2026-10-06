@@ -1,7 +1,8 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
-import { routeContext, nearbyStops, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
+import { placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
+import { stationsForStop, primaryMode, modeInfo, lineInfo } from "../../lib/rail.js";
+import { routeContext, nearbyStops, placesNearStop, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
 
 export async function getStaticPaths() {
   const stops = loadStops();
@@ -20,24 +21,43 @@ const serving = routesForStop(stopId, stopServices, routeLookup);
 const typeLabel = stop.type === "brt" ? "Halte BRT" : "Halte Non-BRT";
 const isBrt = stop.type === "brt";
 const MODE = { mrt: { label: "MRT", color: "#db0000" }, lrt: { label: "LRT", color: "#c2185b" }, krl: { label: "KRL", color: "#db6300" }, kai: { label: "Kereta Bandara", color: "#1e3a8a" } };
-const modes = [...new Set((stop.transfers || []).map(t => t.type))].filter(t => MODE[t]).map(t => MODE[t]);
+// Stasiun kereta terdekat (otomatis dari koordinat) + transfer tercatat di stops.json
+const rail = stationsForStop(stopId).map(s => ({ ...s, mode: modeInfo(primaryMode(s)) }));
+const modeMap = new Map();
+(stop.transfers || []).map(t => MODE[t.type]).filter(Boolean).forEach(m => modeMap.set(m.label, m));
+rail.forEach(s => { if (!modeMap.has(s.mode.short)) modeMap.set(s.mode.short, { label: s.mode.short, color: s.mode.color }); });
+const modes = [...modeMap.values()];
 const groups = groupByCategory(serving);
 const nameOf = id => stops[id]?.name || id;
 
 // Konteks sebelum/sesudah per rute & arah
 const ctx = routeContext(stopId);
+// Satu baris per arah, dibaca kiri → kanan searah laju bus:
+// [┄ N halte] [sebelumnya] [KAMU DI SINI] ▶ [berikutnya] [┄ N halte] [halte akhir]
+function trackFor(o) {
+  const node = (id, state, role) => ({ kind: "node", id, name: nameOf(id), state, role });
+  const items = [];
+  if (o.pos > 0) {
+    if (o.pos - 1 > 0) items.push({ kind: "gap", count: o.pos - 1, state: "past", title: `${o.pos - 1} halte sebelumnya, mulai dari ${nameOf(o.firstId)}` });
+    items.push(node(o.prevId, "past", o.pos - 1 === 0 ? "halte awal" : ""));
+  }
+  items.push({ kind: "node", id: stopId, name: stop.name, state: "here", role: "kamu di sini" });
+  const isLast = o.pos === o.total - 1;
+  if (!isLast) {
+    const nextIsLast = o.pos + 1 === o.total - 1;
+    items.push(node(o.nextId, nextIsLast ? "term" : "next", nextIsLast ? "halte akhir" : ""));
+    const between = o.total - o.pos - 3;
+    if (between > 0) items.push({ kind: "gap", count: between, state: "future", title: `${between} halte lagi sebelum ${nameOf(o.lastId)}` });
+    if (!nextIsLast) items.push(node(o.lastId, "term", "halte akhir"));
+  }
+  return { towards: nameOf(o.lastId), from: nameOf(o.firstId), pos: o.pos + 1, total: o.total, isLast, items };
+}
 function contextFor(routeId) {
   const occ = ctx.get(String(routeId)) || [];
   const dirCount = occ[0]?.dirCount || 0;
   const dirsSeen = new Set(occ.map(o => o.dirIndex));
   return {
-    rows: occ.map(o => ({
-      towards: nameOf(o.lastId),
-      prev: o.prevId ? { id: o.prevId, name: nameOf(o.prevId) } : null,
-      next: o.nextId ? { id: o.nextId, name: nameOf(o.nextId) } : null,
-      isFirst: o.pos === 0,
-      isLast: o.pos === o.total - 1,
-    })),
+    rows: occ.map(trackFor),
     oneWay: dirCount > 1 && dirsSeen.size === 1,
   };
 }
@@ -55,6 +75,7 @@ const me = coordOf(stopId);
 const groupDist = id => (me && coordOf(id) ? formatDistance(distanceM(me, coordOf(id))) : null);
 const nearby = nearbyStops(stopId, { limit: 6, exclude: siblings });
 const routesAt = id => routesForStop(id, stopServices, routeLookup);
+const places = placesNearStop(stopId);
 
 // Peta mini: halte sekitar diberi nomor yang sama dengan nomor di kartu daftar
 const numbered = [...siblings, ...nearby.map(n => n.id)].slice(0, 18);
@@ -75,7 +96,9 @@ const mapUrl = me ? staticStopMap({
 const corridorIds = serving.filter(r => categoryOf(r) === "brt").map(r => r.id);
 const intro = [
   `Halte ${stop.name} adalah ${isBrt ? "halte BRT" : "halte non-BRT (bus stop di tepi jalan)"} yang dilayani ${serving.length} rute Transjakarta${corridorIds.length ? `, termasuk koridor BRT ${corridorIds.slice(0, 6).join(", ")}${corridorIds.length > 6 ? " dan lainnya" : ""}` : ""}.`,
-  modes.length ? `Dari sini kamu bisa transit ke ${modes.map(m => m.label).join(" dan ")}.` : "",
+  rail.length
+    ? `Dari sini kamu bisa transit ke ${rail.slice(0, 3).map(r => `${r.name} (${r.mode.short}, ${r.integrated ? "terintegrasi" : `±${formatDistance(r.distance)}`})`).join(", ")}.`
+    : modes.length ? `Dari sini kamu bisa transit ke ${modes.map(m => m.label).join(" dan ")}.` : "",
   group ? `Halte ini termasuk ${group.hasTerminal ? "kawasan " : ""}${group.name} bersama ${siblings.length} halte lain yang bisa dijangkau dengan berjalan kaki.` : "",
   !group && nearby.length ? `Halte terdekat adalah ${nameOf(nearby[0].id)} (sekitar ${formatDistance(nearby[0].distance)}).` : "",
 ].filter(Boolean).join(" ");
@@ -110,6 +133,31 @@ const intro = [
       <p><b>Halte ini terdiri dari 2 bangunan terpisah, satu untuk tiap arah.</b> Masuklah dari bangunan yang sesuai arah tujuanmu.
       Untuk berganti arah, kamu harus keluar (tap out) lalu masuk lagi (tap in) di bangunan seberang.</p>
     </aside>
+  )}
+
+  {rail.length > 0 && (
+    <section class="rail-block">
+      <h2 class="rail-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14"/><circle cx="9" cy="14" r=".9" fill="currentColor"/><circle cx="15" cy="14" r=".9" fill="currentColor"/><path d="m8 21 2-4M16 21l-2-4"/></svg>
+        Transit ke Kereta
+      </h2>
+      <div class="rail-list">
+        {rail.map(r => (
+          <a href={`/stasiun/${r.slug}`} class="rail-item" style={`--m:${r.mode.color}`}>
+            <span class="rail-badge">{r.mode.short}</span>
+            <span class="rail-main">
+              <b>{r.name}</b>
+              <span class="rail-meta">
+                {r.integrated && <span class="rail-int">Terintegrasi</span>}
+                ±{formatDistance(r.distance)} jalan kaki{me && ` · ke ${compassDir(me, r)}`}
+              </span>
+              <span class="rail-lines">{(r.lines || []).map(l => <i style={`--l:${lineInfo(l).color}`}>{lineInfo(l).short}</i>)}</span>
+            </span>
+            <svg class="rail-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+        ))}
+      </div>
+    </section>
   )}
 
   {mapUrl && (
@@ -160,18 +208,32 @@ const intro = [
                   <div class="ctx-body">
                     {c.rows.map(row => (
                       <div class="ctx-dir">
-                        <p class="ctx-label">Arah {row.towards}</p>
-                        <ol class={`ctx-line ${row.prev ? "has-prev" : ""} ${row.next ? "has-next" : ""}`}>
-                          {row.prev
-                            ? <li class="ctx-stop"><a href={`/halte/${row.prev.id}`}>{row.prev.name}</a></li>
-                            : <li class="ctx-stop is-blank" aria-hidden="true"></li>}
-                          <li class="ctx-stop is-here">
-                            <span>{stop.name}</span>
-                            {(row.isFirst || row.isLast) && <em class="ctx-term">{row.isFirst ? "Halte awal" : "Halte akhir"}</em>}
-                          </li>
-                          {row.next
-                            ? <li class="ctx-stop"><a href={`/halte/${row.next.id}`}>{row.next.name}</a></li>
-                            : <li class="ctx-stop is-blank" aria-hidden="true"></li>}
+                        <div class="ctx-head">
+                          <p class="ctx-label">Menuju {row.towards}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                          </p>
+                          <span class="ctx-pos">dari {row.from} · halte ke-{row.pos} dari {row.total}</span>
+                        </div>
+                        <ol class="ctx-track" aria-label={`Urutan halte menuju ${row.towards}`}>
+                          {row.items.map((it, i) => {
+                            const prev = row.items[i - 1], next = row.items[i + 1];
+                            const segL = prev ? (it.state === "past" || it.state === "here" ? "past" : "fut") : "";
+                            const segR = next ? (it.state === "past" ? "past" : "fut") : "";
+                            if (it.kind === "gap") return (
+                              <li class={`ctx-gap is-${it.state}`}>
+                                <a href={`/rute/${r.slug}`} title={it.title}>{it.count} halte</a>
+                              </li>
+                            );
+                            return (
+                              <li class={`ctx-node is-${it.state} ${segL && `l-${segL}`} ${segR && `r-${segR}`}`} aria-current={it.state === "here" ? "location" : undefined}>
+                                <span class="ctx-dot" aria-hidden="true"></span>
+                                {it.state === "here" && next && <span class="ctx-arrow" aria-hidden="true"></span>}
+                                {it.state === "here" ? <b class="ctx-name">{it.name}</b> : <a class="ctx-name" href={`/halte/${it.id}`}>{it.name}</a>}
+                                {it.role && <span class="ctx-role">{it.role}</span>}
+                              </li>
+                            );
+                          })}
+                          {row.isLast && <li class="ctx-endnote">Halte akhir. Bus tidak melanjutkan perjalanan di arah ini.</li>}
                         </ol>
                       </div>
                     ))}
@@ -185,6 +247,20 @@ const intro = [
         </section>
       ))}
     </>
+  )}
+
+  {places.length > 0 && (
+    <section class="home-section">
+      <div class="section-head"><h2>Tempat di Sekitar</h2><span class="count">radius 600 m</span></div>
+      <div class="place-chips">
+        {places.map(pl => (
+          <a href={`/tempat/${pl.slug}`} class="place-chip">
+            <b>{pl.place.name}</b>
+            <span>{placeCategoryLabel(pl.place.category)} · {formatDistance(pl.distance)} · ke {compassDir(me, pl.place)}</span>
+          </a>
+        ))}
+      </div>
+    </section>
   )}
 
   {group && siblings.length > 0 && (

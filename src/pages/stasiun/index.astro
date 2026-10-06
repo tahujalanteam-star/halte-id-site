@@ -1,0 +1,45 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { stationList, MODE_ORDER, RAIL_MODES, lineInfo, isOpen } from "../../lib/rail.js";
+
+const all = stationList({ openOnly: false });
+const open = all.filter(isOpen);
+const groups = MODE_ORDER.map(key => ({
+  key, ...RAIL_MODES[key],
+  items: all.filter(s => (s.modes || []).includes(key))
+    .sort((a, b) => isOpen(b) - isOpen(a) || a.short.localeCompare(b.short, "id", { numeric: true })),
+})).filter(g => g.items.length);
+---
+<BaseLayout
+  title="Stasiun KRL, MRT & LRT: Halte Transjakarta Terdekat"
+  description={`Daftar ${open.length} stasiun KRL Commuter Line, MRT Jakarta, LRT Jakarta, dan LRT Jabodebek beserta halte Transjakarta terdekat dan rute bus untuk melanjutkan perjalanan.`}
+  canonicalPath="/stasiun"
+>
+  <header class="page-head">
+    <p class="page-kicker">Integrasi antarmoda</p>
+    <h1>Stasiun Kereta</h1>
+    <p class="lead">{open.length} stasiun kereta di Jabodetabek. Pilih stasiun untuk melihat halte Transjakarta terdekat, jarak jalan kaki, dan rute yang bisa dinaiki.</p>
+    <div class="filter-chips" role="navigation" aria-label="Jenis kereta">
+      {groups.map(g => <a class="chip" href={`#${g.key}`} aria-pressed="false">{g.label} <span>{g.items.filter(isOpen).length}</span></a>)}
+    </div>
+  </header>
+  {groups.map(g => (
+    <section class="home-section st-group" id={g.key}>
+      <h2 class="letter-head">{g.label}</h2>
+      <div class="st-grid">
+        {g.items.map(s => isOpen(s) ? (
+          <a href={`/stasiun/${s.slug}`} class="st-card">
+            <b>{s.short}</b>
+            <span class="rail-lines">{(s.lines || []).map(l => <i style={`--l:${lineInfo(l).color}`}>{lineInfo(l).short}</i>)}</span>
+          </a>
+        ) : (
+          <div class="st-card is-soon">
+            <b>{s.short}</b>
+            <span class="soon">Belum beroperasi</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
+  <p class="near-note">Lokasi stasiun bersumber dari OpenStreetMap (ODbL). Stasiun yang belum beroperasi ditampilkan sebagai informasi dan akan diperbarui saat mulai melayani penumpang.</p>
+</BaseLayout>

@@ -11,7 +11,7 @@
 //   "names":   { "terminal-kampung-melayu": "Terminal Kampung Melayu" }  // ganti nama kawasan (kunci = slug)
 // }
 import {
-  loadStops, loadRoutesIndex, loadRoute, loadStopCoords, loadStopGroupOverrides, slugify,
+  loadStops, loadRoutesIndex, loadRoute, loadStopCoords, loadStopGroupOverrides, loadPlaces, slugify,
 } from "./data.js";
 
 export const GROUP_RADIUS_M = 250;
@@ -73,20 +73,35 @@ export function routeContext(stopId) {
   return map;
 }
 
-// Halte lain dalam radius tertentu, terdekat dulu: [{ id, distance }]
-export function nearbyStops(stopId, { radius = NEARBY_RADIUS_M, limit = 8, exclude = [] } = {}) {
-  const me = coordOf(stopId);
-  if (!me) return [];
-  const skip = new Set([stopId, ...exclude]);
-  const coords = loadStopCoords();
+// Halte di sekitar sebuah titik, terdekat dulu: [{ id, distance }]
+export function stopsNearPoint(pt, { radius = NEARBY_RADIUS_M, limit = 8, exclude = [] } = {}) {
+  if (!pt) return [];
+  const skip = new Set(exclude);
   const out = [];
-  for (const [id, c] of Object.entries(coords)) {
+  for (const [id, c] of Object.entries(loadStopCoords())) {
     if (skip.has(id) || !Number.isFinite(c?.lat)) continue;
-    if (Math.abs(c.lat - me.lat) > 0.01 || Math.abs(c.lng - me.lng) > 0.01) continue; // ~1 km, saringan cepat
-    const d = distanceM(me, c);
+    if (Math.abs(c.lat - pt.lat) > 0.012 || Math.abs(c.lng - pt.lng) > 0.012) continue; // ~1,3 km, saringan cepat
+    const d = distanceM(pt, c);
     if (d <= radius) out.push({ id, distance: d });
   }
   return out.sort((a, b) => a.distance - b.distance).slice(0, limit);
+}
+
+// Halte lain dalam radius tertentu dari sebuah halte
+export function nearbyStops(stopId, { radius = NEARBY_RADIUS_M, limit = 8, exclude = [] } = {}) {
+  return stopsNearPoint(coordOf(stopId), { radius, limit, exclude: [stopId, ...exclude] });
+}
+
+// Tempat penting di sekitar sebuah halte: [{ slug, place, distance }]
+export function placesNearStop(stopId, { radius = 600, limit = 8 } = {}) {
+  const me = coordOf(stopId);
+  if (!me) return [];
+  return Object.entries(loadPlaces())
+    .filter(([, p]) => Number.isFinite(p.lat) && Math.abs(p.lat - me.lat) < 0.01 && Math.abs(p.lng - me.lng) < 0.01)
+    .map(([slug, place]) => ({ slug, place, distance: distanceM(me, place) }))
+    .filter(x => x.distance <= radius)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, limit);
 }
 
 // Nama dasar untuk pengelompokan: "Term. Kampung Melayu 4" -> "kampung melayu"

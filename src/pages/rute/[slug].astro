@@ -64,7 +64,7 @@ const directions = route.directions || [];
 const schedule = route.timetable?.schedules?.[0];
 const operatingDays = route.timetable?.operating_days;
 // Info singkat untuk hero: moda yang terhubung & jumlah halte transit
-const MODE_LABEL = { mrt: "MRT", lrt: "LRT", krl: "KRL", kai: "Kereta Bandara" };
+const MODE_LABEL = { mrt: "MRT", lrt: "LRT", krl: "KRL", kai: "KAI" };
 const routeStopIds = [...new Set(directions.flatMap(d => d.stop_ids))];
 const transferStops = routeStopIds.filter(id => (stops[id]?.transfers || []).some(t => String(t.line) !== String(route.id)));
 const modes = [...new Set(routeStopIds.flatMap(id => (stops[id]?.transfers || []).map(t => t.type)))].filter(t => MODE_LABEL[t]).map(t => MODE_LABEL[t]);

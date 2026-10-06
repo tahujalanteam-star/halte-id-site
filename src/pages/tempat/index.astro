@@ -1,0 +1,35 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { loadPlaces, PLACE_CATEGORIES } from "../../lib/data.js";
+
+const places = Object.entries(loadPlaces());
+const groups = Object.entries(PLACE_CATEGORIES)
+  .map(([key, label]) => ({ key, label, items: places.filter(([, p]) => p.category === key).sort((a, b) => a[1].name.localeCompare(b[1].name, "id")) }))
+  .filter(g => g.items.length);
+const other = places.filter(([, p]) => !PLACE_CATEGORIES[p.category]);
+if (other.length) groups.push({ key: "lainnya", label: "Lainnya", items: other });
+---
+<BaseLayout
+  title="Naik Transjakarta ke Tempat Populer di Jakarta"
+  description="Cari halte dan rute Transjakarta terdekat ke mal, rumah sakit, kampus, perkantoran, dan tempat wisata di Jakarta."
+  canonicalPath="/tempat"
+>
+  <header class="page-head">
+    <p class="page-kicker">Tujuan populer</p>
+    <h1>Tempat &amp; Gedung</h1>
+    <p class="lead">{places.length} tempat di Jakarta dan sekitarnya, lengkap dengan halte Transjakarta terdekat dan rute yang bisa dinaiki.</p>
+    <div class="filter-chips" role="navigation" aria-label="Kategori tempat">
+      {groups.map(g => <a class="chip" href={`#${g.key}`} aria-pressed="false">{g.label} <span>{g.items.length}</span></a>)}
+    </div>
+  </header>
+  {groups.map(g => (
+    <section class="home-section letter-group" id={g.key}>
+      <h2 class="letter-head">{g.label}</h2>
+      <div class="grid stop-grid">
+        {g.items.map(([slug, p]) => (
+          <a href={`/tempat/${slug}`} class="stop-card"><span class="stop-card-name">{p.name}</span></a>
+        ))}
+      </div>
+    </section>
+  ))}
+</BaseLayout>

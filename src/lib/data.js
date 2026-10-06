@@ -61,6 +61,32 @@ export function loadStopCoords() {
   return memo("stop-coords", () => readJSON("stop-coords.json", {}));
 }
 
+// Tempat penting (POI): { "<slug>": { name, aliases[], category, lat, lng } }. Opsional.
+// Halte terdekat dihitung otomatis dari koordinat, tidak perlu ditautkan manual.
+export function loadPlaces() {
+  return memo("places", () => readJSON("places.json", {}));
+}
+
+// Stasiun kereta: { "<slug>": { name, short, modes[], lines[], status, lat, lng, osm } }. Opsional.
+// Helper & katalog lin ada di src/lib/rail.js
+export function loadStations() {
+  return memo("stations", () => readJSON("stations.json", {}));
+}
+
+export const PLACE_CATEGORIES = {
+  "mal": "Pusat perbelanjaan",
+  "rumah-sakit": "Rumah sakit",
+  "kampus": "Kampus",
+  "stasiun": "Stasiun",
+  "terminal": "Terminal",
+  "wisata": "Wisata & olahraga",
+  "kantor": "Perkantoran & instansi",
+  "ibadah": "Tempat ibadah",
+  "hotel": "Hotel",
+  "pasar": "Pasar",
+};
+export const placeCategoryLabel = c => PLACE_CATEGORIES[c] || "Tempat";
+
 // Koreksi manual kelompok kawasan (opsional), lihat src/lib/stop-insights.js
 export function loadStopGroupOverrides() {
   return memo("stop-groups", () => readJSON("stop-groups.json", {}));

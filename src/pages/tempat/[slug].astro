@@ -1,0 +1,126 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, loadPlaces, placeCategoryLabel } from "../../lib/data.js";
+import { stopsNearPoint, coordOf, distanceM, formatDistance, compassDir, staticStopMap } from "../../lib/stop-insights.js";
+
+export async function getStaticPaths() {
+  return Object.keys(loadPlaces()).map(slug => ({ params: { slug }, props: { slug } }));
+}
+
+const { slug } = Astro.props;
+const place = loadPlaces()[slug];
+const stops = loadStops();
+const stopServices = loadStopServices();
+const routeLookup = buildRouteLookup(loadRoutesIndex());
+const catLabel = placeCategoryLabel(place.category);
+const pt = { lat: place.lat, lng: place.lng };
+
+// Halte dalam 600 m; bila tidak ada, ambil 3 terdekat dalam 2 km
+let near = stopsNearPoint(pt, { radius: 600, limit: 8 });
+const farOnly = near.length === 0;
+if (farOnly) near = stopsNearPoint(pt, { radius: 2000, limit: 3 });
+const items = near.map((n, i) => ({
+  ...n, num: i + 1, stop: stops[n.id],
+  routes: routesForStop(n.id, stopServices, routeLookup),
+  // arah berjalan dari tempat menuju halte
+  dir: compassDir(pt, coordOf(n.id)),
+  walk: Math.max(1, Math.round(n.distance / 80)),
+}));
+// Rute: masing-masing dari halte terdekatnya
+const routeMap = new Map();
+for (const it of items) for (const r of it.routes) if (!routeMap.has(r.id)) routeMap.set(r.id, { ...r, at: it });
+const cats = groupByCategory([...routeMap.values()]);
+
+const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
+const mapUrl = staticStopMap({
+  main: [pt],
+  others: items.map(it => ({ ...coordOf(it.id), label: it.num })),
+  token: TOKEN,
+});
+const first = items[0];
+const intro = first
+  ? `${place.name} bisa dicapai dengan Transjakarta. Halte terdekat adalah ${first.stop.name}, sekitar ${formatDistance(first.distance)} (±${first.walk} menit jalan kaki)${items.length > 1 ? `, dan ada ${items.length - 1} halte lain ${farOnly ? "dalam radius 2 km" : "dalam radius 600 m"}` : ""}. Total ${routeMap.size} rute berhenti di halte-halte tersebut.`
+  : `Belum ada halte Transjakarta dalam radius 2 km dari ${place.name} di data kami.`;
+---
+<BaseLayout
+  title={`Naik Transjakarta ke ${place.name}: Halte & Rute Terdekat`}
+  description={`Halte Transjakarta terdekat dari ${place.name}${first ? `: ${first.stop.name} (${formatDistance(first.distance)})` : ""}. Lihat ${routeMap.size} rute yang bisa dinaiki, jarak, dan arah jalan kaki.`}
+  canonicalPath={`/tempat/${slug}`}
+>
+  <div class="crumb"><a href="/tempat">Tempat</a> / <span>{place.name}</span></div>
+  <header class="page-hero is-brt">
+    <span class="hero-pin" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/><path d="M9 10h.01M15 10h.01M12 10h.01"/></svg>
+    </span>
+    <div class="hero-text">
+      <p class="page-kicker">{catLabel}</p>
+      <h1>{place.name}</h1>
+      <ul class="soft-chips">
+        <li><b>{items.length}</b> halte terdekat</li>
+        <li><b>{routeMap.size}</b> rute</li>
+      </ul>
+    </div>
+  </header>
+
+  <p class="stop-intro">{intro}</p>
+
+  {mapUrl && (
+    <details class="map-toggle" id="place-map">
+      <summary>
+        <span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
+        <span class="mt-text"><b>Tampilkan peta</b><span>{place.name} dan {items.length} halte terdekat bernomor</span></span>
+        <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <figure class="mini-map">
+        <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} alt={`Peta ${place.name} dan halte terdekat`} width="760" height="320" />
+        <figcaption><span class="mm-dot is-main"></span>{place.name} <span class="mm-dot"></span>halte (nomor sesuai daftar)
+          <a href={`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
+        </figcaption>
+      </figure>
+    </details>
+  )}
+  <script>
+    const box = document.getElementById("place-map");
+    if (box) {
+      const img = box.querySelector("img[data-src]");
+      box.addEventListener("toggle", () => { if (box.open && img && !img.src) img.src = window.mapSrcFor ? window.mapSrcFor(img) : img.dataset.src; });
+    }
+  </script>
+
+  {items.length > 0 && (
+    <section class="home-section">
+      <div class="section-head"><h2>Halte Terdekat</h2><span class="count">{farOnly ? "radius 2 km" : "radius 600 m"}</span></div>
+      <div class="grid near-grid">
+        {items.map(it => (
+          <a href={`/halte/${it.id}`} class="near-card">
+            <span class="near-top"><span class="near-num">{it.num}</span><b>{it.stop.name}</b>{it.stop.type === "brt" && <span class="near-dist is-brt">BRT</span>}</span>
+            <span class="near-where">{formatDistance(it.distance)} · ke {it.dir} · ±{it.walk} menit jalan kaki</span>
+            <span class="near-badges">
+              {it.routes.slice(0, 10).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{r.id}</span>)}
+              {it.routes.length > 10 && <span class="service-more">+{it.routes.length - 10}</span>}
+            </span>
+          </a>
+        ))}
+      </div>
+      <p class="near-note">Jarak dan arah dihitung garis lurus dari titik {place.name}. Untuk gedung atau kawasan besar, pintu masuk bisa berada di sisi lain.</p>
+    </section>
+  )}
+
+  {cats.length > 0 && <h2 class="routes-near-title">Rute ke {place.name}</h2>}
+  {cats.map(c => (
+    <section class="home-section">
+      <div class="section-head"><h3>{c.label}</h3><span class="count">{c.items.length}</span></div>
+      <div class="area-routes">
+        {c.items.map(r => (
+          <div class="area-route">
+            <a href={`/rute/${r.slug}`} class="area-route-main" style={badgeVars(r.route_color)}>
+              <span class="badge-bus">{r.id}</span>
+              <strong>{r.route_name}</strong>
+            </a>
+            <p class="area-at">Turun di <a href={`/halte/${r.at.id}`}>{r.at.stop.name}</a> ({formatDistance(r.at.distance)})</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
+</BaseLayout>
