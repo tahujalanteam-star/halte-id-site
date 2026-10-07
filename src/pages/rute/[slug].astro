@@ -2,6 +2,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { routeMapUrl } from "../../lib/map-utils.js";
 import { octiPath } from "../../lib/octi.js";
+import { railBadgesForStop } from "../../lib/rail.js";
 // Aksen garis hero: segmen horizontal & diagonal 45° saja
 const HERO_LINE = octiPath([[-10, 124], [60, 124], [100, 84], [180, 84], [224, 40], [300, 40], [344, 84], [420, 84]], 7);
 import {
@@ -61,7 +62,10 @@ function transferBadges(stop, stopId) {
       color: !isNon(t) && info?.entry?.route_color ? info.entry.route_color : null,
     };
   };
-  const primary = list.filter(t => !isNon(t)).map(decorate);
+  // Transfer kereta: lencana per lin kereta (warna lin, menuju /kereta/<lin>) bila stasiunnya ditemukan
+  const rail = railBadgesForStop(stopId);
+  const railBadges = rail.badges.map(b => ({ line: b.text, type: "rail", non: false, href: b.href, color: b.color, title: b.title }));
+  const primary = [...list.filter(t => !isNon(t) && !rail.handled.has(t.type)).map(decorate), ...railBadges];
   const non = list.filter(isNon).sort((a, b) => {
     const ja = String(a.line).toUpperCase().startsWith("JAK") || a.type === "jak";
     const jb = String(b.line).toUpperCase().startsWith("JAK") || b.type === "jak";
@@ -162,8 +166,8 @@ const ldSchema = {
                 <div class="transfers-wrapper">
                   {[...tb.primary, ...tb.visible].map(t => (
                     t.href
-                      ? <a href={t.href} class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`} style={t.color ? `background-color:${t.color};color:${readableText(t.color)};` : undefined}>{t.line}</a>
-                      : <span class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`}>{t.line}</span>
+                      ? <a href={t.href} title={t.title} class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`} style={t.color ? `background-color:${t.color};color:${readableText(t.color)};` : undefined}>{t.line}</a>
+                      : <span title={t.title} class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`} style={t.color ? `background-color:${t.color};color:${readableText(t.color)};` : undefined}>{t.line}</span>
                   ))}
                   {tb.hidden.length > 0 && (
                     <button type="button" class="btn-toggle-routes more-toggle" hidden>+{tb.hidden.length} rute</button>

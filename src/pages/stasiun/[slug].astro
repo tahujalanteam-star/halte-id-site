@@ -2,7 +2,9 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, placeCategoryLabel, loadPlaces } from "../../lib/data.js";
 import { coordOf, distanceM, formatDistance, compassDir, staticStopMap } from "../../lib/stop-insights.js";
-import { stationList, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, lineInfo, RAIL_MODES } from "../../lib/rail.js";
+import { stationList, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, lineInfo, RAIL_MODES, neighborsOnLines, stationShort, fareTableFrom } from "../../lib/rail.js";
+import { rupiah } from "../../lib/rail-fare-core.js";
+import { stationSchedule, fmtMin } from "../../lib/schedule.js";
 
 export async function getStaticPaths() {
   return stationList().map(st => ({ params: { slug: st.slug }, props: { st } }));
@@ -17,11 +19,11 @@ const mode = modeInfo(primaryMode(st));
 const modeLabels = (st.modes || []).map(m => RAIL_MODES[m]?.label).filter(Boolean);
 const lines = (st.lines || []).map(l => ({ key: l, ...lineInfo(l) }));
 
-const { near, farOnly } = stopsNearStation(pt);
+const { near, farOnly } = stopsNearStation(st);
 const items = near.map((n, i) => ({
   ...n, num: i + 1, stop: stops[n.id],
   routes: routesForStop(n.id, stopServices, routeLookup),
-  dir: compassDir(pt, coordOf(n.id)),
+  dir: compassDir(n.from || pt, coordOf(n.id)),
   walk: Math.max(1, Math.round(n.distance / 80)),
 }));
 const routeMap = new Map();
@@ -30,6 +32,61 @@ const cats = groupByCategory([...routeMap.values()]);
 
 // Stasiun lain untuk pindah moda/lin (mis. Dukuh Atas: KRL Sudirman, BNI City, MRT, LRT)
 const interchange = stationsNearPoint(pt, { radius: 450, limit: 5, exclude: [st.slug] }).map(s => ({ ...s, mode: modeInfo(primaryMode(s)) }));
+
+// Stasiun sebelum/sesudah per lin, format sama dengan urutan halte di halaman halte
+const fmtKm = km => km.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+function trackRow(r) {
+  const node = (id, state, role) => ({ kind: "node", id, name: stationShort(id), state, role });
+  const items = [];
+  if (r.pos > 0) {
+    if (r.pos - 1 > 0) items.push({ kind: "gap", count: r.pos - 1, state: "past", title: `${r.pos - 1} stasiun sebelumnya, mulai dari ${stationShort(r.stations[0])}` });
+    items.push(node(r.prev, "past", r.pos - 1 === 0 ? "stasiun awal" : ""));
+  }
+  items.push({ kind: "node", id: st.slug, name: st.short, state: "here", role: "kamu di sini" });
+  const last = r.total - 1;
+  if (r.pos < last) {
+    const nextIsLast = r.pos + 1 === last;
+    items.push(node(r.next, nextIsLast ? "term" : "next", nextIsLast ? "stasiun akhir" : ""));
+    const between = r.total - r.pos - 3;
+    if (between > 0) items.push({ kind: "gap", count: between, state: "future", title: `${between} stasiun lagi sebelum ${stationShort(r.stations[last])}` });
+    if (!nextIsLast) items.push(node(r.stations[last], "term", "stasiun akhir"));
+  }
+  const kmLeft = r.km[last] - r.km[r.pos];
+  return {
+    items, isLast: r.pos === last,
+    heading: r.pos === last ? `Stasiun akhir dari ${stationShort(r.stations[0])}` : `Menuju ${r.ends.join(" / ")}`,
+    meta: r.pos === last ? `${r.total} stasiun · ${fmtKm(r.km[last])} km` : `stasiun ke-${r.pos + 1} dari ${r.total} · ${fmtKm(kmLeft)} km lagi ke ${stationShort(r.stations[last])}`,
+  };
+}
+const lineCtx = neighborsOnLines(st.slug).map(({ line, rows }) => ({ line, rows: rows.map(trackRow) }));
+const fareTables = fareTableFrom(st.slug);
+const sched = stationSchedule(st.slug);
+// Tabel jadwal lengkap per jam; tujuan selain tujuan utama diberi huruf kecil
+const timetable = (sched?.dirs || []).map(d => {
+  const main = d.dests[0];
+  const marks = new Map(), used = new Set();
+  for (const dest of d.dests.slice(1)) {
+    const n = d.destNames[d.dests.indexOf(dest)];
+    let k = n[0].toUpperCase(); if (used.has(k)) k = n.slice(0, 2); used.add(k); marks.set(dest, k);
+  }
+  const hoursOf = list => {
+    const hours = new Map();
+    for (const t of list) {
+      const h = Math.floor(t.min / 60) % 24;
+      if (!hours.has(h)) hours.set(h, []);
+      hours.get(h).push({ m: String(t.min % 60).padStart(2, "0"), mark: t.dest === main ? "" : marks.get(t.dest), wk: t.days === 1 });
+    }
+    return [...hours.entries()];
+  };
+  // Jadwal hari kerja & hari libur yang berbeda total (MRT) → dua tabel; selain itu satu tabel, kereta hari kerja saja digarisbawahi
+  const split = d.holidayOnlyCount > 0;
+  const tables = split
+    ? [{ title: "Hari kerja", hours: hoursOf(d.trains.filter(t => t.days !== 2)) }, { title: "Sabtu, Minggu & libur nasional", hours: hoursOf(d.trains.filter(t => t.days !== 1)) }]
+    : [{ title: "", hours: hoursOf(d.trains) }];
+  return { ...d, mainName: d.destNames[0], marks: [...marks.entries()].map(([dest, k]) => ({ k, name: d.destNames[d.dests.indexOf(dest)] })), tables, hasWk: !split && d.weekdayOnlyCount > 0, total: split ? `${d.countWeekday} / ${d.countHoliday}` : d.trains.length };
+});
+const fmtDate = iso => new Date(iso + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+const schedSource = sched ? `Jadwal resmi ${sched.sourceName} (${sched.dateKind === "berlaku" ? "berlaku sejak" : "diambil"} ${fmtDate(sched.date)})` : "";
 
 const places = Object.entries(loadPlaces())
   .filter(([, p]) => Number.isFinite(p.lat) && Math.abs(p.lat - pt.lat) < 0.01 && Math.abs(p.lng - pt.lng) < 0.01)
@@ -56,8 +113,8 @@ const intro = [
 ].filter(Boolean).join(" ");
 ---
 <BaseLayout
-  title={`${st.name}: Halte & Rute Transjakarta Terdekat`}
-  description={`Halte Transjakarta terdekat dari ${st.name}${first ? `: ${first.stop.name} (${formatDistance(first.distance)})` : ""}. ${routeMap.size} rute bus untuk lanjut perjalanan, jarak dan arah jalan kaki.`}
+  title={fareTables.length ? `${st.name}: Tarif, Stasiun Berikutnya & Halte Transjakarta` : `${st.name}: Halte & Rute Transjakarta Terdekat`}
+  description={`${fareTables.length ? `Tarif ${fareTables[0].short} dari ${st.short}, stasiun sebelum & sesudah. ` : ""}Halte Transjakarta terdekat dari ${st.name}${first ? `: ${first.stop.name} (${formatDistance(first.distance)})` : ""}. ${routeMap.size} rute bus untuk lanjut perjalanan, jarak dan arah jalan kaki.`}
   canonicalPath={`/stasiun/${st.slug}`}
   crumbs={[{ name: "Stasiun Kereta", path: "/stasiun" }, { name: st.name }]}
   schema={{ "@type": "TrainStation", name: st.name, geo: { "@type": "GeoCoordinates", latitude: st.lat, longitude: st.lng } }}
@@ -80,7 +137,143 @@ const intro = [
 
   <p class="stop-intro">{intro}</p>
 
-  {lines.length > 0 && (
+  {sched && (
+    <section class="home-section" id="jadwal">
+      <div class="section-head"><h2>Kereta Berikutnya</h2><span class="count">menurut jadwal</span></div>
+      <div class="pids" data-slug={st.slug}>
+        {sched.dirs.map((d, i) => (
+          <div class="pids-card" data-dir={i}>
+            <div class="pids-head"><b>{d.label}</b><span>berikutnya: {d.nextName}</span></div>
+            <div class="pids-rows"><p class="pids-empty">Kereta pertama {fmtMin(d.firstWeekday.min)}, terakhir {fmtMin(d.lastWeekday.min)}.</p></div>
+          </div>
+        ))}
+      </div>
+      <p class="pids-note" id="pids-note">{schedSource}, bukan posisi kereta secara langsung. Kereta bisa terlambat.</p>
+
+      <h3 class="pids-sub">Jadwal {sched.mode} pertama &amp; terakhir dari {st.short}</h3>
+      <div class="fare-box">
+        <table class="fare-table">
+          <thead><tr><th>Arah</th><th class="num">Pertama</th><th class="num">Terakhir</th><th class="num col-day">Per hari</th></tr></thead>
+          <tbody>
+            {sched.dirs.map(d => (
+              <tr>
+                <td><b>{d.label.replace("Menuju ", "")}</b><span class="ex-km"> · via {d.nextName}</span></td>
+                <td class="num">{fmtMin(d.firstWeekday.min)}</td>
+                <td class="num">{fmtMin(d.lastWeekday.min)}{d.lastWeekday.dest !== d.dests[0] && (() => { const lm = d.trains.filter(t => t.dest === d.dests[0] && t.days !== 2).at(-1); return <span class="last-note">ke {d.destNames[d.dests.indexOf(d.lastWeekday.dest)]}{lm && <><br />ke {d.destNames[0]} {fmtMin(lm.min)}</>}</span>; })()}</td>
+                <td class="num col-day">{d.countWeekday}{d.countHoliday !== d.countWeekday && <span class="ex-km"> / {d.countHoliday}</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {sched.dirs.some(d => d.countHoliday !== d.countWeekday) && <p class="near-note">Per hari: hari kerja / Sabtu, Minggu &amp; libur nasional.</p>}
+      <a class="tt-jump" href="#jadwal-lengkap">Lihat jadwal lengkap per jam <span aria-hidden="true">↓</span></a>
+    </section>
+  )}
+  <script>
+    // Tombol "Lihat jadwal lengkap": buka arah pertama saat bergulir ke bawah
+    document.querySelector(".tt-jump")?.addEventListener("click", () => { const d = document.querySelector("#jadwal-lengkap details"); if (d) d.open = true; });
+    // Hitung "x mnt" dari jadwal (jam WIB). Data per stasiun dimuat dari /data/jadwal/<slug>.json
+    const box = document.querySelector(".pids[data-slug]");
+    if (box) {
+      const pad = n => String(n).padStart(2, "0");
+      const hhmm = m => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`;
+      const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const nowWIB = () => {
+        const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23", weekday: "short" }).formatToParts(new Date()).map(x => [x.type, x.value]));
+        return { date: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute, wd: p.weekday };
+      };
+      const prevDate = d => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() - 1); return x.toISOString().slice(0, 10); };
+      const wdOf = d => new Date(d + "T12:00:00Z").getUTCDay();
+      let data = null;
+      const render = () => {
+        if (!data) return;
+        const now = nowWIB();
+        const isHol = d => wdOf(d) === 0 || wdOf(d) === 6 || data.hol.includes(d);
+        const today = now.date, yday = prevDate(today);
+        const ok = (t, day) => !(t[3] === 1 && isHol(day)) && !(t[3] === 2 && !isHol(day));
+        const note = document.getElementById("pids-note");
+        const extra = data.hol.includes(today) ? "Hari ini libur nasional: berlaku jadwal akhir pekan. " : data.cuti.includes(today) ? `Hari ini cuti bersama: jadwal bisa berubah, cek pengumuman ${data.src || "operator"}. ` : "";
+        if (note && !note.dataset.base) note.dataset.base = note.textContent;
+        if (note) note.textContent = extra + note.dataset.base;
+        box.querySelectorAll(".pids-card").forEach(card => {
+          const d = data.dirs[+card.dataset.dir];
+          if (!d) return;
+          // kereta hari ini + kereta lewat tengah malam dari jadwal kemarin
+          const list = [
+            ...d.t.filter(t => t[0] >= 1440 && ok(t, yday)).map(t => [t[0] - 1440, t]),
+            ...d.t.filter(t => ok(t, today)).map(t => [t[0], t]),
+          ].filter(([m]) => m >= now.min).sort((a, b) => a[0] - b[0]).slice(0, 3);
+          const rows = card.querySelector(".pids-rows");
+          if (!list.length) {
+            const tmr = (() => { const x = new Date(today + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); })();
+            const tomorrowFirst = d.t.find(t => ok(t, tmr)) || d.t[0];
+            rows.innerHTML = `<p class="pids-empty">Kereta terakhir arah ini sudah berangkat. Kereta pertama besok pukul ${hhmm(tomorrowFirst[0])}.</p>`;
+            return;
+          }
+          rows.innerHTML = list.map(([m, t]) => {
+            const diff = m - now.min, L = data.lines[t[2]];
+            const eta = diff <= 0 ? `<b>0</b><span>mnt</span>` : diff < 60 ? `<b>${diff}</b><span>mnt</span>` : `<b class="at">${hhmm(m)}</b><span>pukul</span>`;
+            return `<div class="pids-row${diff <= 5 ? " soon" : ""}"><span class="pids-pill" style="background:${L[2]}">${esc(L[1])}</span>` +
+              `<div class="pids-main"><b>${esc(data.names[t[1]])}</b><span>jadwal ${hhmm(m)}${t[3] === 1 && !d.sp ? " · hari kerja" : ""}</span></div><div class="pids-eta">${eta}</div></div>`;
+          }).join("");
+        });
+      };
+      fetch(`/data/jadwal/${box.dataset.slug}.json`).then(r => r.ok ? r.json() : null).then(j => { data = j; render(); setInterval(render, 20000); }).catch(() => {});
+    }
+  </script>
+
+  {lineCtx.length > 0 ? (
+    <section class="home-section">
+      <div class="section-head"><h2>Lin Kereta &amp; Stasiun Berikutnya</h2><span class="count">{lineCtx.length} lin</span></div>
+      <div class="ctx-list">
+        {lineCtx.map(({ line, rows }, li) => (
+          <details class="route-ctx" style={`--c:${line.color}`} open={!sched && li < 2}>
+            <summary>
+              <span class="badge-bus line-badge" style={`background:${line.color};color:#fff`}>{RAIL_MODES[line.mode]?.short || "KA"}</span>
+              <span class="ctx-sum">
+                <strong>{line.label}</strong>
+                <span class="sub">{line.ends}</span>
+              </span>
+              <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="ctx-body">
+              {rows.map(row => (
+                <div class="ctx-dir">
+                  <div class="ctx-head">
+                    <p class="ctx-label">{row.heading}
+                      {!row.isLast && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>}
+                    </p>
+                    <span class="ctx-pos">{row.meta}</span>
+                  </div>
+                  <ol class="ctx-track" aria-label={`Urutan stasiun ${line.label}, ${row.heading.toLowerCase()}`}>
+                    {row.items.map((it, i) => {
+                      const prev = row.items[i - 1], next = row.items[i + 1];
+                      const segL = prev ? (it.state === "past" || it.state === "here" ? "past" : "fut") : "";
+                      const segR = next ? (it.state === "past" ? "past" : "fut") : "";
+                      if (it.kind === "gap") return (
+                        <li class={`ctx-gap is-${it.state}`}><a href={`/kereta/${line.key}`} title={it.title}>{it.count} stasiun</a></li>
+                      );
+                      return (
+                        <li class={`ctx-node is-${it.state} ${segL && `l-${segL}`} ${segR && `r-${segR}`}`} aria-current={it.state === "here" ? "location" : undefined}>
+                          <span class="ctx-dot" aria-hidden="true"></span>
+                          {it.state === "here" && next && <span class="ctx-arrow" aria-hidden="true"></span>}
+                          {it.state === "here" ? <b class="ctx-name">{it.name}</b> : <a class="ctx-name" href={`/stasiun/${it.id}`}>{it.name}</a>}
+                          {it.role && <span class="ctx-role">{it.role}</span>}
+                        </li>
+                      );
+                    })}
+                    {row.isLast && <li class="ctx-endnote">Stasiun akhir. Kereta tidak melanjutkan perjalanan di arah ini.</li>}
+                  </ol>
+                </div>
+              ))}
+              <a class="ctx-more" href={`/kereta/${line.key}`}>Lihat semua stasiun {line.label} &rarr;</a>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  ) : lines.length > 0 && (
     <section class="home-section">
       <div class="section-head"><h2>Lin Kereta</h2><span class="count">{lines.length}</span></div>
       <div class="st-lines">
@@ -90,6 +283,15 @@ const intro = [
           </div>
         ))}
       </div>
+    </section>
+  )}
+
+  {(st.entrances || []).length > 0 && (
+    <section class="home-section">
+      <div class="section-head"><h2>Akses Masuk</h2><span class="count">{st.entrances.length} pintu</span></div>
+      <ul class="st-entrances">
+        {st.entrances.map(e => <li><b>{e.name}</b><a href={`https://www.google.com/maps/search/?api=1&query=${e.lat},${e.lng}`} target="_blank" rel="noopener nofollow">Buka di peta</a></li>)}
+      </ul>
     </section>
   )}
 
@@ -123,7 +325,7 @@ const intro = [
         {items.map(it => (
           <a href={`/halte/${it.id}`} class="near-card">
             <span class="near-top"><span class="near-num">{it.num}</span><b>{it.stop.name}</b>{it.stop.type === "brt" && <span class="near-dist is-brt">BRT</span>}</span>
-            <span class="near-where">{formatDistance(it.distance)} · ke {it.dir} · ±{it.walk} menit jalan kaki</span>
+            <span class="near-where">{formatDistance(it.distance)} · ke {it.dir} · ±{it.walk} menit jalan kaki{it.entrance && ` · dari ${it.entrance}`}</span>
             <span class="near-badges">
               {it.routes.slice(0, 10).map(r => <span class="badge-bus" style={badgeVars(r.route_color)}>{routeLabel(r)}</span>)}
               {it.routes.length > 10 && <span class="service-more">+{it.routes.length - 10}</span>}
@@ -152,6 +354,73 @@ const intro = [
       </div>
     </section>
   ))}
+
+  {sched && (
+    <section class="home-section" id="jadwal-lengkap">
+      <div class="section-head"><h2>Jadwal Lengkap {sched.mode} dari {st.short}</h2><span class="count">{sched.dirs.length} arah</span></div>
+      {timetable.map(d => (
+        <details class="tt">
+          <summary>Jadwal lengkap · {d.label} <span>{d.total} kereta</span></summary>
+          <div class="tt-body">
+            <p class="tt-legend">{d.marks.length ? <>Tanpa tanda = tujuan {d.mainName}{d.marks.map(m => <>, <b>{m.k}</b> = {m.name}</>)}</> : <>Semua kereta menuju {d.mainName}</>}{d.hasWk && <>, <u>garis bawah</u> = tidak beroperasi Sabtu, Minggu &amp; libur nasional</>}.</p>
+            {d.tables.map(tb => (
+              <>
+                {tb.title && <h4 class="tt-title">{tb.title}</h4>}
+                <table class="tt-table">
+                  <tbody>
+                    {tb.hours.map(([h, ms]) => (
+                      <tr><th>{String(h).padStart(2, "0")}</th><td><div class="tt-mins">{ms.map(x => <span class={x.wk ? "wk" : undefined}>{x.m}{x.mark && <sup>{x.mark}</sup>}</span>)}</div></td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            ))}
+          </div>
+        </details>
+      ))}
+      <p class="near-note">Sumber: {schedSource.replace("Jadwal resmi ", "jadwal resmi ")}.</p>
+    </section>
+  )}
+
+  {fareTables.map(t => (
+    <section class="home-section" id={`tarif-${t.network}`}>
+      <div class="section-head"><h2>Tarif {t.label} dari {st.short}</h2><span class="count">{t.rows.length} tujuan</span></div>
+      <p class="fare-lead">{t.network === "krl"
+        ? `Tarif KRL dihitung dari jarak: Rp3.000 untuk 25 km pertama, lalu Rp1.000 per 10 km berikutnya. Tujuan terjauh dari ${st.short}: ${t.rows.at(-1)?.name} (${fmtKm(t.rows.at(-1)?.km || 0)} km, ${rupiah(t.rows.at(-1)?.fare || 0)}).`
+        : t.network === "jab" ? "Tarif jam sibuk (Senin–Jumat 06.00–09.00 dan 16.00–20.00). Di luar jam sibuk serta Sabtu, Minggu, dan hari libur, tarif maksimal Rp10.000."
+        : t.network === "lrtj" ? `Tarif LRT Jakarta datar ${rupiah(t.rows[0]?.fare || 5000)} ke semua stasiun.`
+        : `Tarif MRT Jakarta dari ${st.short} mulai ${rupiah(Math.min(...t.rows.map(r => r.fare)))} sampai ${rupiah(Math.max(...t.rows.map(r => r.fare)))}.`}</p>
+      {t.network !== "lrtj" && (
+        <div class="fare-box">
+          {t.rows.length > 12 && <input class="fare-filter" type="search" placeholder="Cari stasiun tujuan…" aria-label="Cari stasiun tujuan" />}
+          <div class="fare-scroll">
+            <table class="fare-table">
+              <thead><tr><th>Tujuan</th>{t.network === "krl" && <th class="num">Jarak</th>}<th class="num">{t.network === "jab" ? "Jam sibuk" : "Tarif"}</th>{t.network === "jab" && <th class="num">Luar jam sibuk</th>}</tr></thead>
+              <tbody>
+                {t.rows.map(r => (
+                  <tr data-q={r.name.toLowerCase()}>
+                    <td><a href={`/stasiun/${r.slug}`}>{r.name}</a></td>
+                    {t.network === "krl" && <td class="num">{fmtKm(r.km)} km</td>}
+                    <td class="num"><b>{rupiah(r.fare)}</b></td>
+                    {t.network === "jab" && <td class="num">{rupiah(r.fareOff)}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      <p class="near-note">Jarak dari jalur rel OpenStreetMap, bisa berbeda tipis dari jarak resmi. <a href="/kereta/tarif">Hitung tarif antarstasiun</a></p>
+    </section>
+  ))}
+  <script>
+    document.querySelectorAll(".fare-box").forEach(box => {
+      const q = box.querySelector(".fare-filter");
+      if (!q) return;
+      const rows = [...box.querySelectorAll("tbody tr")];
+      q.addEventListener("input", () => { const v = q.value.trim().toLowerCase(); rows.forEach(r => { r.hidden = v && !r.dataset.q.includes(v); }); });
+    });
+  </script>
 
   {interchange.length > 0 && (
     <section class="home-section">

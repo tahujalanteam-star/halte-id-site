@@ -1,0 +1,211 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { badgeVars, loadStations, loadStops, loadStopServices, loadRoutesIndex, buildRouteLookup, routesForStop } from "../../lib/data.js";
+import { formatDistance } from "../../lib/stop-insights.js";
+import { railLines, RAIL_MODES, RAIL_LINES, LINE_BADGE, lineInfo, railFare, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, isOpen } from "../../lib/rail.js";
+import { rupiah } from "../../lib/rail-fare-core.js";
+import { octiPath } from "../../lib/octi.js";
+
+export async function getStaticPaths() {
+  return railLines().map(line => ({ params: { line: line.key }, props: { line } }));
+}
+
+const { line } = Astro.props;
+const stations = loadStations();
+const stops = loadStops();
+const stopServices = loadStopServices();
+const routeLookup = buildRouteLookup(loadRoutesIndex());
+const mode = RAIL_MODES[line.mode] || RAIL_MODES.krl;
+const HERO_LINE = octiPath([[-10, 124], [60, 124], [100, 84], [180, 84], [224, 40], [300, 40], [344, 84], [420, 84]], 7);
+const fmtKm = km => km.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+const fmtSeg = km => (km < 1 ? `${Math.round(km * 100) * 10} m` : `${fmtKm(km)} km`);
+const isLoop = p => p.stations[0] === p.stations.at(-1);
+
+// Info tiap stasiun (dihitung sekali per stasiun)
+const info = new Map();
+function stationInfo(slug) {
+  if (info.has(slug)) return info.get(slug);
+  const st = stations[slug];
+  // Pindah lin: lin lain di stasiun ini + lin di stasiun moda lain di dekatnya (mis. MRT Dukuh Atas → KRL Sudirman/BNI City, LRT Dukuh Atas).
+  // Ditampilkan sebagai lin (menuju /kereta/<lin>), bukan nama stasiun.
+  const otherLines = [], seen = new Set([line.key]);
+  for (const l of st.lines || []) if (!seen.has(l) && RAIL_LINES[l]) { seen.add(l); otherLines.push({ key: l, label: LINE_BADGE[l] || lineInfo(l).short, color: lineInfo(l).color, title: lineInfo(l).label }); }
+  let kai = null;
+  for (const s of stationsNearPoint(st, { radius: 650, limit: 6, exclude: [slug] })) {
+    const ls = (s.lines || []).filter(l => RAIL_LINES[l]);
+    if (!ls.length && (s.modes || []).includes("kai")) kai ||= `Kereta antarkota · ${s.name}, ±${formatDistance(s.distance)}`;
+    for (const l of ls) if (!seen.has(l)) { seen.add(l); otherLines.push({ key: l, label: LINE_BADGE[l] || lineInfo(l).short, color: lineInfo(l).color, title: `${lineInfo(l).label} · ${s.name}, ±${formatDistance(s.distance)} jalan kaki` }); }
+  }
+  const nearby = [];
+  const { near, farOnly } = stopsNearStation({ ...st, slug });
+  const routeIds = new Set();
+  for (const n of farOnly ? [] : near) for (const r of routesForStop(n.id, stopServices, routeLookup)) routeIds.add(r.id);
+  const out = { otherLines, nearby, kai, tjRoutes: routeIds.size, nearest: near[0] ? { id: near[0].id, name: stops[near[0].id]?.name, distance: near[0].distance } : null };
+  info.set(slug, out);
+  return out;
+}
+
+// Pola yang ditampilkan: pola utama (dua arah). Lin Cikarang: lingkar penuh + pola lurus sebagai "pola lain".
+const shown = line.main;
+const others = line.patterns.filter(p => !p.main);
+const cards = shown.map((p, i) => {
+  const loop = isLoop(p);
+  let title = `${p.from} → ${p.to}`;
+  if (loop) {
+    // Lingkar: sebut stasiun simpul pertama & terakhir setelah titik cabang (mis. Cikarang → Kampung Bandan → Manggarai → Cikarang)
+    const k = p.stations.findIndex((s, j) => j > 0 && p.stations.indexOf(s, j + 1) > 0);
+    const seg = k > 0 ? p.stations.slice(k + 1, p.stations.lastIndexOf(p.stations[k])) : p.stations.slice(1, -1);
+    const hubs = seg.filter(s => (stations[s]?.lines || []).length > 1);
+    if (hubs.length > 1) title = `${p.from} → ${stations[hubs[0]].short} → ${stations[hubs.at(-1)].short} → ${p.from}`;
+  }
+  const rows = p.stations.map((s, k) => ({ slug: s, st: stations[s], km: p.km[k], seg: k > 0 ? p.km[k] - p.km[k - 1] : null, ...stationInfo(s) }));
+  return { p, i, loop, title, rows };
+});
+
+const allSlugs = [...new Set(line.patterns.flatMap(p => p.stations))];
+const ref = shown.reduce((a, b) => (b.km.at(-1) > a.km.at(-1) ? b : a), shown[0]);
+const endFare = isLoop(ref) ? null : railFare(ref.stations[0], ref.stations.at(-1));
+const fareText = (() => {
+  if (line.key === "lrt-jakarta") return "Tarif Rp5.000";
+  if (line.key === "krl-bandara") return "Tarif khusus KA Bandara";
+  if (line.key === "whoosh") return "Tarif dinamis";
+  if (line.key === "krl-walahar") return "Tarif: cek KAI Commuter";
+  const fares = [];
+  for (const a of allSlugs) for (const b of allSlugs) { const f = railFare(a, b); if (f) fares.push(f.fare); }
+  return fares.length ? `${rupiah(Math.min(...fares))} – ${rupiah(Math.max(...fares))}` : "";
+})();
+
+const transferCount = allSlugs.filter(s => stationInfo(s).otherLines.length || stationInfo(s).nearby.length).length;
+const intro = [
+  `${line.label}${line.label === mode.label ? "" : ` (${mode.label})`} melayani ${line.stationCount} stasiun dengan panjang lintasan sekitar ${fmtKm(line.lengthKm)} km${isLoop(ref) ? " dalam satu putaran lingkar" : `, dari ${ref.from} sampai ${ref.to}`}.`,
+  endFare ? `Tarif dari ujung ke ujung (${ref.from}–${ref.to}) ${rupiah(endFare.fare)}${endFare.fareOff && endFare.fareOff !== endFare.fare ? ` pada jam sibuk dan ${rupiah(endFare.fareOff)} di luar jam sibuk` : ""}.` : "",
+  transferCount ? `${transferCount} stasiun terhubung dengan lin atau moda kereta lain, dan banyak stasiun bisa dilanjutkan dengan bus Transjakarta.` : "",
+].filter(Boolean).join(" ");
+---
+<BaseLayout
+  title={`${line.label}: Urutan Stasiun, Tarif & Transit Transjakarta`}
+  description={`Daftar ${line.stationCount} stasiun ${line.label} (${line.ends}) berurutan, jarak dan tarif tiap stasiun, titik pindah lin, serta rute Transjakarta di sekitar stasiun.`}
+  canonicalPath={`/kereta/${line.key}`}
+  crumbs={[{ name: "Lin Kereta", path: "/kereta" }, { name: line.label }]}
+  schema={{ "@type": "ItemList", name: `Stasiun ${line.label}`, numberOfItems: cards[0].rows.length,
+    itemListElement: cards[0].rows.map((r, i) => ({ "@type": "ListItem", position: i + 1, name: r.st.name, url: `https://halte.id/stasiun/${r.slug}` })) }}
+>
+  <div class="crumb"><a href="/kereta">Lin Kereta</a> / <span>{line.label}</span></div>
+
+  <header class="route-hero" style={badgeVars(line.color)}>
+    <svg class="hero-line" viewBox="0 0 400 160" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+      <path d={HERO_LINE} fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="140" cy="84" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
+      <circle cx="262" cy="40" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
+      <circle cx="380" cy="84" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
+    </svg>
+    <div class="hero-main">
+      <span class="hero-badge">{mode.short}</span>
+      <div class="hero-text">
+        <p class="hero-kicker">{mode.label}</p>
+        <h1>{line.label}</h1>
+        <p class="hero-sub">{line.ends}</p>
+      </div>
+    </div>
+    <ul class="hero-chips">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{line.stationCount} stasiun</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19 20 5M4 5h4M16 19h4"/></svg>±{fmtKm(line.lengthKm)} km</li>
+      {fareText && <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16a2 2 0 0 1 2 2v2.2a2.5 2.5 0 0 0 0 4.6v2.2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2.2a2.5 2.5 0 0 0 0-4.6V7.5a2 2 0 0 1 2-2Z"/><path d="M9 12h6"/></svg>{fareText}</li>}
+    </ul>
+  </header>
+
+  <p class="stop-intro">{intro}</p>
+
+  {cards.length > 1 && (
+    <div class="dir-tabs" role="tablist" aria-label="Arah perjalanan" hidden>
+      {cards.map(c => <button type="button" role="tab" class="dir-tab" data-tab={c.i}>{c.title}</button>)}
+    </div>
+  )}
+
+  {cards.map(c => (
+    <section class="dir-card line-card" data-card={c.i}>
+      <div class="dir-head">
+        <h2>{c.title}</h2>
+        <span class="line-meta">{c.rows.length} stasiun · {fmtKm(c.p.km.at(-1))} km</span>
+      </div>
+      <ol class="timeline rail-timeline" style={`--route-color:${line.color};`}>
+        {c.rows.map((r, k) => (
+          <li class="stop-item is-brt-item">
+            <span class="stop-dot-brt"></span>
+            <div class="rt-row">
+              <a class="stop-list-name" href={`/stasiun/${r.slug}`}>{r.st.short}</a>
+              {r.seg != null && <span class="rt-km" title={`Jarak dari ${c.rows[k - 1].st.short} ke ${r.st.short}`}>{fmtSeg(r.seg)}</span>}
+            </div>
+            {(r.otherLines.length > 0 || r.kai || r.tjRoutes > 0) && (
+              <div class="transfers-wrapper">
+                {r.otherLines.map(l => <a href={`/kereta/${l.key}`} class="transfer-badge" style={`background-color:${l.color}`} title={l.title}>{l.label}</a>)}
+                {r.kai && <span class="transfer-badge" style={`background-color:${RAIL_MODES.kai.color}`} title={r.kai}>KAI</span>}
+                {r.tjRoutes > 0 && <a href={`/stasiun/${r.slug}`} class="transfer-badge transfer-tj" title={r.nearest ? `Halte terdekat: ${r.nearest.name} (${formatDistance(r.nearest.distance)})` : undefined}>{r.tjRoutes} rute TJ</a>}
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+      <p class="near-note">Angka di kanan = jarak rel dari stasiun sebelumnya, dihitung dari jalur OpenStreetMap (bisa berbeda tipis dari jarak resmi). Tarif tidak dihitung per stasiun; lihat <a href="/kereta/tarif">kalkulator tarif</a>.</p>
+    </section>
+  ))}
+
+  {others.length > 0 && (
+    <section class="home-section">
+      <div class="section-head"><h2>Pola Layanan Lain</h2><span class="count">{others.length}</span></div>
+      <ul class="pattern-list">
+        {others.map(p => <li><b>{p.from} → {p.to}</b><span>{p.stations.length} stasiun · {fmtKm(p.km.at(-1))} km</span></li>)}
+      </ul>
+      <p class="near-note">Tidak semua perjalanan melewati seluruh lin. Cek papan informasi di stasiun atau aplikasi resmi untuk jadwal tiap pola.</p>
+    </section>
+  )}
+
+  <section class="home-section">
+    <div class="section-head"><h2>Lin Kereta Lain</h2></div>
+    <div class="line-grid">
+      {railLines().filter(l => l.key !== line.key).map(l => (
+        <a href={`/kereta/${l.key}`} class="line-card-link" style={`--l:${l.color}`}><b>{l.label}</b><span>{l.ends}</span></a>
+      ))}
+    </div>
+  </section>
+
+  <style>
+    .dir-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 .9rem; }
+    .dir-tab { font: inherit; font-size: .84rem; font-weight: 700; padding: .45rem .9rem; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); }
+    .dir-tab[aria-selected="true"] { background: var(--text-main); color: var(--card-bg); border-color: var(--text-main); }
+    .line-meta { font-size: .82rem; color: var(--text-sub); font-weight: 600; white-space: nowrap; }
+    .dir-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .9rem; }
+    .dir-head h2 { margin: 0; }
+    .rt-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; }
+    .rt-row .stop-list-name { margin-bottom: 4px; }
+    .rt-km { font-size: .8rem; font-weight: 600; color: var(--text-sub); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .rt-km::before { content: "↑ "; opacity: .55; }
+    .transfers-wrapper { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+    .transfer-badge { font-size: .68rem; font-weight: 700; padding: 2px 7px; border-radius: 10px; color: #fff; line-height: 16px; }
+    a.transfer-badge:hover { text-decoration: none; opacity: .85; }
+    .transfer-tj { background: var(--badge-bg); color: var(--text-sub); border: 1px solid var(--border-color); }
+    .pattern-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .5rem; }
+    .pattern-list li { display: flex; flex-direction: column; padding: .65rem .9rem; border-radius: 14px; background: var(--card-bg); border: 1px solid var(--border-color); }
+    .pattern-list span { font-size: .8rem; color: var(--text-sub); }
+    .line-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem; }
+    .line-card-link { display: flex; flex-direction: column; padding: .7rem .9rem; border-radius: 14px; background: var(--card-bg); border: 1px solid var(--border-color);
+      border-left: 5px solid var(--l); color: var(--text-main); }
+    .line-card-link:hover { text-decoration: none; border-color: var(--l); }
+    .line-card-link span { font-size: .8rem; color: var(--text-sub); }
+  </style>
+  <script>
+    // Tanpa JS semua arah tampil; dengan JS satu arah per tab
+    const tabs = [...document.querySelectorAll(".dir-tab")];
+    const cards = [...document.querySelectorAll(".line-card[data-card]")];
+    if (tabs.length > 1) {
+      tabs[0].parentElement.hidden = false;
+      const show = i => {
+        cards.forEach(c => { c.hidden = c.dataset.card !== String(i); });
+        tabs.forEach(t => t.setAttribute("aria-selected", t.dataset.tab === String(i) ? "true" : "false"));
+      };
+      tabs.forEach(t => t.addEventListener("click", () => show(t.dataset.tab)));
+      show(0);
+    }
+  </script>
+</BaseLayout>

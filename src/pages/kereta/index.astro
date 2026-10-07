@@ -1,0 +1,62 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { railLines, RAIL_MODES, MODE_ORDER } from "../../lib/rail.js";
+
+const lines = railLines();
+const fmtKm = km => km.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+const groups = MODE_ORDER.map(m => ({ key: m, ...RAIL_MODES[m], items: lines.filter(l => l.mode === m) })).filter(g => g.items.length);
+const total = new Set(lines.flatMap(l => l.patterns.flatMap(p => p.stations))).size;
+---
+<BaseLayout
+  title="Lin Kereta Jabodetabek: KRL, MRT, LRT & Tarif"
+  description={`Urutan stasiun ${lines.length} lin kereta di Jabodetabek: KRL Commuter Line, MRT Jakarta, LRT Jakarta, LRT Jabodebek, KA Bandara, dan Whoosh. Lengkap dengan jarak, tarif, dan transit Transjakarta.`}
+  canonicalPath="/kereta"
+  crumbs={[{ name: "Lin Kereta" }]}
+>
+  <header class="page-head">
+    <p class="page-kicker">Integrasi antarmoda</p>
+    <h1>Lin Kereta Jabodetabek</h1>
+    <p class="lead">{lines.length} lin dengan {total} stasiun. Pilih lin untuk melihat urutan stasiun, jarak dan tarif dari stasiun awal, titik pindah lin, dan rute Transjakarta di sekitar tiap stasiun.</p>
+    <div class="row-links">
+      <a class="tarif-cta" href="/kereta/tarif">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16a2 2 0 0 1 2 2v2.2a2.5 2.5 0 0 0 0 4.6v2.2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2.2a2.5 2.5 0 0 0 0-4.6V7.5a2 2 0 0 1 2-2Z"/><path d="M9 12h6"/></svg>
+        Kalkulator tarif kereta
+      </a>
+      <a class="tarif-cta is-ghost" href="/stasiun">Semua stasiun</a>
+    </div>
+  </header>
+
+  {groups.map(g => (
+    <section class="home-section">
+      <h2 class="letter-head">{g.label}</h2>
+      <div class="kereta-grid">
+        {g.items.map(l => (
+          <a href={`/kereta/${l.key}`} class="kereta-card" style={`--l:${l.color}`}>
+            <span class="kc-bar" aria-hidden="true"></span>
+            <b>{l.label}</b>
+            <span class="kc-ends">{l.ends}</span>
+            <span class="kc-meta">{l.stationCount} stasiun · ±{fmtKm(l.lengthKm)} km</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+
+  <p class="near-note">Urutan stasiun dan jarak dari OpenStreetMap (© kontributor OpenStreetMap, ODbL). Tarif mengikuti ketentuan resmi operator; jarak hitungan bisa berbeda tipis dari jarak resmi.</p>
+
+  <style>
+    .row-links { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+    .tarif-cta { display: inline-flex; align-items: center; gap: .45rem; padding: .6rem 1rem; border-radius: 999px; font-weight: 700; font-size: .9rem;
+      background: var(--primary); color: #fff; }
+    .tarif-cta svg { width: 18px; height: 18px; }
+    .tarif-cta.is-ghost { background: var(--card-bg); color: var(--primary); border: 1px solid var(--border-color); }
+    .tarif-cta:hover { text-decoration: none; opacity: .92; }
+    .kereta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .6rem; }
+    .kereta-card { position: relative; display: flex; flex-direction: column; gap: .15rem; padding: .9rem 1rem .9rem 1.2rem; border-radius: 16px; overflow: hidden;
+      background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: var(--shadow); color: var(--text-main); transition: transform .15s, box-shadow .15s; }
+    .kereta-card:hover { text-decoration: none; transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+    .kc-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--l); }
+    .kc-ends { font-size: .85rem; color: var(--text-sub); }
+    .kc-meta { font-size: .78rem; font-weight: 600; color: var(--text-sub); margin-top: .2rem; }
+  </style>
+</BaseLayout>

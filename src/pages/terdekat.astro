@@ -8,15 +8,15 @@ const topAreas = stopGroups().groups.filter(g => g.hasTerminal).slice(0, 12);
 const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
 ---
 <BaseLayout
-  title="Halte Bus Terdekat dari Lokasimu"
-  description="Cari halte bus Transjakarta terdekat dari lokasimu sekarang: jarak, arah jalan kaki, dan rute apa saja yang bisa dinaiki di sekitarmu. Lokasi diproses di perangkatmu, tidak dikirim ke server."
+  title="Halte & Stasiun Terdekat dari Lokasimu"
+  description="Cari halte Transjakarta dan stasiun KRL, MRT, atau LRT terdekat dari lokasimu sekarang: jarak, arah jalan kaki, rute bus, dan lin kereta di sekitarmu. Lokasi diproses di perangkatmu, tidak dikirim ke server."
   canonicalPath="/terdekat"
   crumbs={[{ name: "Halte Terdekat" }]}
 >
   <header class="page-head">
     <p class="page-kicker">Di sekitarmu</p>
-    <h1>Halte Bus Terdekat</h1>
-    <p class="lead">Temukan halte Transjakarta terdekat dari posisimu sekarang, lengkap dengan jarak, arah jalan kaki, dan rute yang bisa kamu naiki.</p>
+    <h1>Halte Terdekat</h1>
+    <p class="lead">Temukan halte Transjakarta dan stasiun kereta terdekat dari posisimu sekarang, lengkap dengan jarak, arah jalan kaki, rute bus, dan lin kereta yang bisa kamu naiki.</p>
     <button id="locate" type="button" class="btn btn-primary locate-main">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
       Gunakan lokasiku
@@ -31,6 +31,7 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
     <div id="map-slot"></div>
     <div id="stop-list" class="grid near-grid"></div>
     <p class="near-note">Jarak dihitung garis lurus dari posisimu. Waktu jalan kaki adalah perkiraan (±80 m per menit).</p>
+    <div id="station-sec"></div>
     <div id="route-sec"></div>
   </section>
 
@@ -66,12 +67,14 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
     const TILE = 0.05;
     let routesPromise = null;
     const loadRoutes = () => (routesPromise ||= fetch("/data/geo/routes.json").then(r => { if (!r.ok) throw new Error("data"); return r.json(); }));
+    let stationsPromise = null;
+    const loadStations = () => (stationsPromise ||= fetch("/data/geo/stations.json").then(r => r.ok ? r.json() : []).catch(() => []));
     const loadData = async (me) => {
       const ty = Math.floor(me.lat / TILE), tx = Math.floor(me.lng / TILE);
       const keys = [];
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) keys.push(`${ty + dy}_${tx + dx}`);
-      const [r, ...tiles] = await Promise.all([loadRoutes(), ...keys.map(k => fetch(`/data/geo/${k}.json`).then(res => res.ok ? res.json() : []).catch(() => []))]);
-      return { r, s: tiles.flat() };
+      const [r, st, ...tiles] = await Promise.all([loadRoutes(), loadStations(), ...keys.map(k => fetch(`/data/geo/${k}.json`).then(res => res.ok ? res.json() : []).catch(() => []))]);
+      return { r, st, s: tiles.flat() };
     };
 
     function render(me, accuracy, data) {
@@ -93,6 +96,22 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
         </div>`;
       }).join("");
 
+      // Stasiun kereta terdekat: jarak lewat pintu masuk terdekat; 1,5 km, atau 2 terdekat dalam 5 km bila tidak ada
+      const stations = (data.st || []).map(x => {
+        let best = { d: dist(me, { lat: x[2], lng: x[3] }), lat: x[2], lng: x[3], via: "" };
+        for (const e of x[6] || []) { const d = dist(me, { lat: e[1], lng: e[2] }); if (d < best.d) best = { d, lat: e[1], lng: e[2], via: e[0] }; }
+        return { slug: x[0], name: x[1], mode: x[4], lines: x[5], sched: x[7], ...best };
+      }).sort((a, b) => a.d - b.d);
+      let nearSt = stations.filter(x => x.d <= 1500).slice(0, 4);
+      if (!nearSt.length) nearSt = stations.filter(x => x.d <= 5000).slice(0, 2);
+      $("station-sec").innerHTML = nearSt.length ? `<div class="section-head st-near-head"><h2>Stasiun Kereta Terdekat</h2><span class="count">${nearSt.some(x => x.d <= 1500) ? "radius 1,5 km" : "dalam 5 km"}</span></div>
+        <div class="grid near-grid">${nearSt.map((x, i) => `<div class="near-card nearest-card">
+          <a class="near-top" href="/stasiun/${x.slug}"><span class="near-num is-rail" style="background:${x.mode[0]}">${String.fromCharCode(65 + i)}</span><b>${esc(x.name)}</b><span class="near-dist" style="background:${x.mode[0]};color:#fff">${esc(x.mode[1])}</span></a>
+          <span class="near-where">${fmt(x.d)} · ke ${dirOf(me, x)}${walk(x.d) ? " · " + walk(x.d) : ""}${x.via ? " · lewat " + esc(x.via) : ""}</span>
+          ${x.lines.length ? `<span class="near-badges">${x.lines.map(l => `<a class="badge-bus" href="/kereta/${l[0]}" style="--c:${l[2]};--on:#fff">${esc(l[1])}</a>`).join("")}</span>` : ""}
+          <span class="nearest-actions"><a href="/stasiun/${x.slug}${x.sched ? "#jadwal" : ""}">${x.sched ? "Kereta berikutnya" : "Detail stasiun"}</a><a href="https://www.google.com/maps/dir/?api=1&origin=${me.lat},${me.lng}&destination=${x.lat},${x.lng}&travelmode=walking" target="_blank" rel="noopener nofollow">Petunjuk jalan kaki ↗</a></span>
+        </div>`).join("")}</div>` : "";
+
       // Rute dalam radius 500 m (atau 3 halte terdekat bila tak ada) — dari halte terdekat masing-masing
       const pool = all.filter(s => s.d <= 500);
       const src = pool.length ? pool : near.slice(0, 3);
@@ -109,10 +128,12 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       const slot = $("map-slot");
       slot.innerHTML = "";
       if (cfg.token) {
-        const pins = near.map((s, i) => `pin-s-${i + 1}+6b7381(${s.lng.toFixed(5)},${s.lat.toFixed(5)})`).concat(`pin-l+16a34a(${me.lng.toFixed(5)},${me.lat.toFixed(5)})`).join(",");
+        const pins = near.map((s, i) => `pin-s-${i + 1}+6b7381(${s.lng.toFixed(5)},${s.lat.toFixed(5)})`)
+          .concat(nearSt.filter(x => x.d <= 1500).map((x, i) => `pin-s-${String.fromCharCode(97 + i)}+${x.mode[0].slice(1)}(${x.lng.toFixed(5)},${x.lat.toFixed(5)})`))
+          .concat(`pin-l+16a34a(${me.lng.toFixed(5)},${me.lat.toFixed(5)})`).join(",");
         const style = document.documentElement.getAttribute("data-theme") === "dark" ? "dark-v11" : "streets-v12";
         const url = `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${pins}/auto/760x340@2x?padding=50&access_token=${cfg.token}`;
-        slot.innerHTML = `<details class="map-toggle"><summary><span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span><span class="mt-text"><b>Lihat di peta</b><span>Posisimu (hijau) dan halte terdekat bernomor</span></span></summary><figure class="mini-map"><img alt="Peta posisimu dan halte terdekat" width="760" height="340"></figure></details>`;
+        slot.innerHTML = `<details class="map-toggle"><summary><span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span><span class="mt-text"><b>Lihat di peta</b><span>Posisimu (hijau), halte bernomor, stasiun berhuruf</span></span></summary><figure class="mini-map"><img alt="Peta posisimu dan halte terdekat" width="760" height="340"></figure></details>`;
         const d = slot.querySelector("details"), img = slot.querySelector("img");
         d.addEventListener("toggle", () => { if (d.open && !img.src) img.src = url; });
       }
@@ -124,7 +145,7 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       if (!("geolocation" in navigator)) return setStatus("Browser ini tidak mendukung lokasi. Gunakan daftar halte di bawah.", "is-error");
       btn.disabled = true;
       setStatus("Mencari lokasimu… Izinkan akses lokasi bila browser bertanya.");
-      loadRoutes().catch(() => {});
+      loadRoutes().catch(() => {}); loadStations();
       navigator.geolocation.getCurrentPosition(async pos => {
         btn.disabled = false;
         try {

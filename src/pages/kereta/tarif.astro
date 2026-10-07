@@ -1,0 +1,170 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { loadStations, loadRailFares } from "../../lib/data.js";
+import { buildFareNet, stationFareNetworks, railFare, FARE_NETWORKS, isOpen } from "../../lib/rail.js";
+import { rupiah } from "../../lib/rail-fare-core.js";
+
+const stations = loadStations();
+const F = loadRailFares();
+const net = buildFareNet();
+const order = ["krl", "mrt", "jab", "lrtj"].filter(n => net[n]);
+const byNet = Object.fromEntries(order.map(n => [n, Object.keys(stations)
+  .filter(s => isOpen(stations[s]) && stationFareNetworks(s).includes(n))
+  .map(s => [s, stations[s].short])
+  .sort((a, b) => a[1].localeCompare(b[1], "id"))]));
+const clientData = JSON.stringify({ net, byNet });
+
+// Contoh tarif populer (statis, juga untuk mesin pencari)
+const EXAMPLES = [
+  ["krl-jakarta-kota", "krl-bogor"], ["krl-manggarai", "krl-bogor"], ["krl-tanah-abang", "krl-rangkasbitung"], ["krl-tanah-abang", "krl-serpong"],
+  ["krl-duri", "krl-tangerang"], ["krl-manggarai", "krl-bekasi"], ["krl-sudirman", "krl-cikarang"], ["krl-jakarta-kota", "krl-tanjung-priuk"],
+  ["krl-manggarai", "krl-depok"], ["krl-tanah-abang", "krl-parungpanjang"],
+  ["mrt-lebak-bulus", "mrt-bundaran-hi"], ["mrt-blok-m", "mrt-dukuh-atas"], ["mrt-fatmawati", "mrt-senayan"],
+  ["lrt-jabodebek-dukuh-atas", "lrt-jabodebek-harjamukti"], ["lrt-jabodebek-dukuh-atas", "lrt-jabodebek-jatimulya"], ["lrt-jabodebek-cawang", "lrt-jabodebek-kuningan"],
+].map(([a, b]) => ({ a, b, f: railFare(a, b) })).filter(x => x.f && stations[x.a] && stations[x.b]);
+const fmtKm = km => km.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+const integ = F.integrasi;
+---
+<BaseLayout
+  title="Kalkulator Tarif KRL, MRT & LRT Jabodetabek"
+  description="Hitung tarif KRL Commuter Line, MRT Jakarta, LRT Jabodebek, dan LRT Jakarta antarstasiun. Lengkap dengan aturan tarif jarak KRL, tarif jam sibuk LRT, dan tarif integrasi JakLingko."
+  canonicalPath="/kereta/tarif"
+  crumbs={[{ name: "Lin Kereta", path: "/kereta" }, { name: "Kalkulator Tarif" }]}
+>
+  <div class="crumb"><a href="/kereta">Lin Kereta</a> / <span>Kalkulator Tarif</span></div>
+  <header class="page-head">
+    <p class="page-kicker">Tarif kereta</p>
+    <h1>Kalkulator Tarif Kereta</h1>
+    <p class="lead">Pilih jenis kereta, stasiun asal, dan stasiun tujuan. Tarif KRL dihitung dari jarak rel; MRT dan LRT Jabodebek memakai tabel tarif resmi.</p>
+  </header>
+
+  <section class="calc" id="calc">
+    <div class="calc-modes" role="tablist" aria-label="Jenis kereta">
+      {order.map((n, i) => <button type="button" class="calc-mode" data-net={n} aria-selected={i === 0 ? "true" : "false"} style={`--m:${FARE_NETWORKS[n].color}`}>{FARE_NETWORKS[n].label}</button>)}
+    </div>
+    <div class="calc-fields">
+      <label><span>Dari</span><select id="from"></select></label>
+      <button type="button" id="swap" class="calc-swap" aria-label="Tukar asal dan tujuan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4"/></svg>
+      </button>
+      <label><span>Ke</span><select id="to"></select></label>
+    </div>
+    <div class="calc-result" id="result" aria-live="polite">
+      <noscript>Kalkulator membutuhkan JavaScript. Lihat contoh tarif di bawah.</noscript>
+    </div>
+  </section>
+  <script type="application/json" id="fare-data" set:html={clientData}></script>
+  <script>
+    import { krlDistances, fareBetween, rupiah } from "../../lib/rail-fare-core.js";
+    const { net, byNet } = JSON.parse(document.getElementById("fare-data").textContent);
+    const $ = id => document.getElementById(id);
+    const from = $("from"), to = $("to"), out = $("result");
+    const modes = [...document.querySelectorAll(".calc-mode")];
+    const names = Object.fromEntries(Object.values(byNet).flat());
+    const DEFAULTS = { krl: ["krl-manggarai", "krl-bogor"], mrt: ["mrt-lebak-bulus", "mrt-bundaran-hi"], jab: ["lrt-jabodebek-dukuh-atas", "lrt-jabodebek-harjamukti"], lrtj: ["lrt-jakarta-kelapa-gading", "lrt-jakarta-velodrome"] };
+    const fmtKm = km => km.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+    let cur = null;
+    const fill = (sel, list, val) => {
+      sel.innerHTML = list.map(([s, n]) => `<option value="${s}">${n}</option>`).join("");
+      if (val && list.some(x => x[0] === val)) sel.value = val;
+    };
+    const setNet = (n, a, b) => {
+      cur = n;
+      modes.forEach(m => m.setAttribute("aria-selected", m.dataset.net === n ? "true" : "false"));
+      const list = byNet[n] || [];
+      const d = DEFAULTS[n] || [];
+      fill(from, list, a || d[0]); fill(to, list, b || d[1] || list[1]?.[0]);
+      calc();
+    };
+    function calc() {
+      const a = from.value, b = to.value;
+      const u = new URL(location.href); u.searchParams.set("dari", a); u.searchParams.set("ke", b); history.replaceState(null, "", u);
+      if (a === b) { out.innerHTML = `<p class="calc-empty">Pilih stasiun tujuan yang berbeda.</p>`; return; }
+      const f = fareBetween(net, a, b, cur === "krl" ? krlDistances(net.krl.adj, a) : undefined);
+      if (!f) { out.innerHTML = `<p class="calc-empty">Tarif belum tersedia untuk pasangan stasiun ini.</p>`; return; }
+      const route = `${names[a]} → ${names[b]}`;
+      let html = `<p class="calc-route">${route}</p>`;
+      if (f.network === "jab" && f.fareOff !== f.fare) {
+        html += `<div class="calc-fares"><div><span>Jam sibuk</span><b>${rupiah(f.fare)}</b><small>Sen–Jum 06.00–09.00 &amp; 16.00–20.00</small></div><div><span>Di luar jam sibuk</span><b>${rupiah(f.fareOff)}</b><small>termasuk Sabtu, Minggu &amp; libur</small></div></div>`;
+      } else {
+        html += `<div class="calc-fares"><div><span>Tarif</span><b>${rupiah(f.fare)}</b>${f.km ? `<small>±${fmtKm(f.km)} km jarak rel</small>` : f.network === "lrtj" ? "<small>tarif datar semua stasiun</small>" : ""}</div></div>`;
+      }
+      html += `<p class="calc-links"><a href="/stasiun/${a}">Stasiun ${names[a]}</a> · <a href="/stasiun/${b}">Stasiun ${names[b]}</a></p>`;
+      out.innerHTML = html;
+    }
+    modes.forEach(m => m.addEventListener("click", () => setNet(m.dataset.net)));
+    from.addEventListener("change", calc); to.addEventListener("change", calc);
+    $("swap").addEventListener("click", () => { const a = from.value; from.value = to.value; to.value = a; calc(); });
+    const q = new URLSearchParams(location.search), qa = q.get("dari"), qb = q.get("ke");
+    const qn = qa && Object.keys(byNet).find(n => byNet[n].some(x => x[0] === qa) && byNet[n].some(x => x[0] === qb));
+    setNet(qn || modes[0]?.dataset.net, qn && qa, qn && qb);
+  </script>
+
+  <section class="home-section">
+    <div class="section-head"><h2>Contoh Tarif</h2><span class="count">{EXAMPLES.length}</span></div>
+    <div class="fare-box">
+      <table class="fare-table">
+        <thead><tr><th>Rute</th><th class="num">Tarif</th></tr></thead>
+        <tbody>
+          {EXAMPLES.map(x => (
+            <tr>
+              <td><a href={`/stasiun/${x.a}`}>{stations[x.a].short}</a> – <a href={`/stasiun/${x.b}`}>{stations[x.b].short}</a><span class="ex-km"> · {FARE_NETWORKS[x.f.network].short}{x.f.km && ` · ${fmtKm(x.f.km)} km`}</span></td>
+              <td class="num"><b>{rupiah(x.f.fare)}</b>{x.f.fareOff && x.f.fareOff !== x.f.fare && <span class="ex-km"> / {rupiah(x.f.fareOff)}</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="near-note">LRT Jabodebek: tarif jam sibuk / di luar jam sibuk.</p>
+  </section>
+
+  <section class="home-section prose-sec">
+    <h2>Aturan Tarif</h2>
+    <h3>KRL Commuter Line</h3>
+    <p>{rupiah(F.krl?.base_fare || 3000)} untuk {F.krl?.base_km || 25} km pertama, lalu {rupiah(F.krl?.step_fare || 1000)} untuk setiap {F.krl?.step_km || 10} km berikutnya. Jarak yang dipakai di halte.id dihitung dari jalur rel OpenStreetMap lewat lintasan terpendek, jadi bisa berbeda tipis dari jarak resmi KAI Commuter. KA Bandara dan Commuter Line Walahar memakai tarif tersendiri.</p>
+    <h3>MRT Jakarta</h3>
+    <p>Tarif mengikuti tabel antarstasiun, mulai Rp3.000 untuk satu stasiun sampai Rp14.000 untuk Lebak Bulus–Bundaran HI.</p>
+    <h3>LRT Jabodebek</h3>
+    <p>Tarif jam sibuk (Senin–Jumat 06.00–09.00 dan 16.00–20.00) mengikuti tabel resmi, Rp5.000 sampai Rp20.000. Di luar jam sibuk, serta Sabtu, Minggu, dan hari libur nasional, tarif paling mahal Rp10.000.</p>
+    <h3>LRT Jakarta</h3>
+    <p>Tarif datar {rupiah(F["lrt-jakarta"]?.fare || 5000)} untuk semua stasiun Kelapa Gading–Manggarai.</p>
+    {integ && <>
+      <h3>Tarif integrasi JakLingko</h3>
+      <p>Bila berpindah antara Transjakarta (BRT), MRT Jakarta, dan LRT Jakarta dalam {integ.window_minutes} menit, tarif dihitung {rupiah(integ.base_fare)} ditambah {rupiah(integ.per_km)} per km, paling mahal {rupiah(integ.max)} untuk seluruh perjalanan. Skema ini hanya berlaku bila benar-benar berganti moda; perjalanan dengan satu moda tetap memakai tarif biasa. KRL, LRT Jabodebek, Mikrotrans, dan bus non-BRT tidak termasuk.</p>
+      <p>Pembayaran: {integ.payment}.</p>
+    </>}
+    <h3>Transjakarta</h3>
+    <p>Tarif bus Transjakarta Rp3.500 sekali jalan (Rp2.000 pukul 05.00–07.00). Mikrotrans gratis dengan kartu JakLingko. Lihat <a href="/rute">daftar rute</a> untuk melanjutkan perjalanan dari stasiun.</p>
+    <p class="near-note">Diperbarui {F.updated}. Tarif bisa berubah sewaktu-waktu; cek pengumuman resmi operator.</p>
+  </section>
+
+  <style is:global>
+    .calc { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 22px; box-shadow: var(--shadow); padding: 1.1rem; margin-bottom: 1.5rem; }
+    .calc-modes { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+    .calc-mode { font: inherit; font-size: .84rem; font-weight: 700; padding: .45rem .9rem; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); }
+    .calc-mode[aria-selected="true"] { background: var(--m); border-color: var(--m); color: #fff; }
+    .calc-fields { display: grid; grid-template-columns: 1fr auto 1fr; gap: .6rem; align-items: end; }
+    .calc-fields label { display: flex; flex-direction: column; gap: .3rem; font-size: .78rem; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: .05em; }
+    .calc-fields select { font: inherit; font-size: 1rem; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--text-main); padding: .65rem .8rem;
+      border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-color); width: 100%; }
+    .calc-swap { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--primary); cursor: pointer; display: grid; place-items: center; }
+    .calc-swap svg { width: 20px; height: 20px; }
+    .calc-result { margin-top: 1rem; border-top: 1px dashed var(--border-color); padding-top: 1rem; min-height: 96px; }
+    .calc-route { margin: 0 0 .6rem; font-weight: 700; }
+    .calc-fares { display: flex; flex-wrap: wrap; gap: .6rem; }
+    .calc-fares > div { flex: 1 1 180px; display: flex; flex-direction: column; padding: .8rem 1rem; border-radius: 16px; background: var(--badge-bg); }
+    .calc-fares span { font-size: .76rem; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: .05em; }
+    .calc-fares b { font-size: 1.9rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+    .calc-fares small { font-size: .78rem; color: var(--text-sub); }
+    .calc-links { margin: .7rem 0 0; font-size: .86rem; }
+    .calc-empty { margin: 0; color: var(--text-sub); }
+    .ex-km { color: var(--text-sub); font-size: .8rem; font-weight: 500; }
+    .prose-sec h3 { margin: 1.1rem 0 .3rem; font-size: 1rem; }
+    .prose-sec p { margin: 0 0 .5rem; line-height: 1.6; color: var(--text-main); }
+    @media (max-width: 560px) {
+      .calc-fields { grid-template-columns: 1fr; }
+      .calc-swap { justify-self: center; transform: rotate(90deg); }
+    }
+  </style>
+</BaseLayout>

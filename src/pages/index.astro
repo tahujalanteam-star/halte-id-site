@@ -1,11 +1,13 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { octiPath } from "../lib/octi.js";
+import { railLines } from "../lib/rail.js";
 import { routeLabel, loadRoutesIndex, loadStops, routeSlug, compareCodes, badgeVars, readableText, categoryOf, groupByCategory, loadPlaces, placeCategoryLabel } from "../lib/data.js";
 
 const routes = loadRoutesIndex().slice().sort((a, b) => compareCodes(a.id, b.id));
 const stops = loadStops();
 const stopCount = Object.keys(stops).length;
+const railLineCount = railLines().length;
 const corridors = routes.filter(r => categoryOf(r) === "brt");
 const serviceGroups = groupByCategory(routes).filter(g => g.key !== "brt");
 // Aksen garis: hanya horizontal, vertikal, dan diagonal 45° seperti peta transit resmi
@@ -21,7 +23,7 @@ while (heroColors.length < 4) heroColors.push(["#D90429", "#354992", "#efc94b", 
 ---
 <BaseLayout
   title={undefined}
-  description="Panduan lengkap rute dan halte Transjakarta & JakLingko Jakarta — cari nomor rute, jadwal, tarif, dan daftar pemberhentian tiap koridor bus di Jakarta."
+  description="Panduan bus dan kereta Jakarta: rute dan halte Transjakarta & Mikrotrans, urutan stasiun KRL, MRT, dan LRT, jadwal, tarif, serta titik transit antarmoda."
   canonicalPath="/"
 >
   <section class="home-hero">
@@ -33,10 +35,11 @@ while (heroColors.length < 4) heroColors.push(["#D90429", "#354992", "#efc94b", 
       <circle cx="260" cy="160" r="9" /><circle cx="330" cy="160" r="9" /><circle cx="180" cy="100" r="9" />
     </svg></div>
     <div class="home-hero-inner">
-      <p class="home-kicker"><span class="dot"></span>Transjakarta &middot; JakLingko &middot; Mikrotrans</p>
-      <h1>Panduan Rute &amp; <span class="hl">Halte Bus</span> Jakarta</h1>
+      <p class="home-kicker"><span class="dot"></span>Transjakarta &middot; KRL &middot; MRT &middot; LRT</p>
+      <h1>Panduan <span class="hl">Bus &amp; Kereta</span> Jabodetabek</h1>
       <p class="home-lead">
-        Cari nomor rute atau nama halte: jadwal, tarif, daftar pemberhentian, dan peta jalur tiap koridor dalam satu tempat.
+        Cari rute, halte, atau stasiun: jadwal, tarif, urutan pemberhentian, dan titik transit dalam satu tempat.
+        <span class="lead-more">Baru pertama kali naik? Baca <a href="/panduan">panduannya</a>.</span>
       </p>
       <div class="home-search-row">
         <div class="home-search">
@@ -52,7 +55,7 @@ while (heroColors.length < 4) heroColors.push(["#D90429", "#354992", "#efc94b", 
       <div class="home-stats">
         <a href="/rute"><b>{routes.length}</b> rute</a>
         <a href="/halte"><b>{stopCount}</b> halte</a>
-        <a href="/panduan"><b>Panduan</b> naik bus &rarr;</a>
+        <a href="/kereta"><b>{railLineCount}</b> lin kereta</a>
       </div>
     </div>
   </section>

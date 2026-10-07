@@ -20,6 +20,7 @@ const groups = MODE_ORDER.map(key => ({
     <p class="page-kicker">Integrasi antarmoda</p>
     <h1>Stasiun Kereta</h1>
     <p class="lead">{open.length} stasiun kereta di Jabodetabek. Pilih stasiun untuk melihat halte Transjakarta terdekat, jarak jalan kaki, dan rute yang bisa dinaiki.</p>
+    <p class="lead"><a href="/kereta">Lihat urutan stasiun per lin</a> · <a href="/kereta/tarif">Kalkulator tarif kereta</a></p>
     <div class="filter-chips" role="navigation" aria-label="Jenis kereta">
       {groups.map(g => <a class="chip" href={`#${g.key}`} aria-pressed="false">{g.label} <span>{g.items.filter(isOpen).length}</span></a>)}
     </div>
@@ -36,7 +37,7 @@ const groups = MODE_ORDER.map(key => ({
         ) : (
           <div class="st-card is-soon">
             <b>{s.short}</b>
-            <span class="soon">Belum beroperasi</span>
+            <span class="soon">{s.status === "tutup" ? `Tidak beroperasi lagi${s.replaced_by ? " · gunakan " + (all.find(x => x.slug === s.replaced_by)?.short || "") : ""}` : "Belum beroperasi"}</span>
           </div>
         ))}
       </div>

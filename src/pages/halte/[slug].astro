@@ -172,7 +172,7 @@ const ldSchema = {
               <b>{r.name}</b>
               <span class="rail-meta">
                 {r.integrated && <span class="rail-int">Terintegrasi</span>}
-                ±{formatDistance(r.distance)} jalan kaki{me && ` · ke ${compassDir(me, r)}`}
+                ±{formatDistance(r.distance)} jalan kaki{me && ` · ke ${compassDir(me, r.at || r)}`}{r.entrance && ` · via ${r.entrance}`}
               </span>
               <span class="rail-lines">{(r.lines || []).map(l => <i style={`--l:${lineInfo(l).color}`}>{lineInfo(l).short}</i>)}</span>
             </span>

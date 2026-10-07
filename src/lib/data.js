@@ -73,6 +73,24 @@ export function loadStations() {
   return memo("stations", () => readJSON("stations.json", {}));
 }
 
+// Urutan stasiun per lin & pola layanan (scripts/build-rail-lines.py) dan aturan tarif kereta. Opsional.
+export function loadRailLines() {
+  return memo("rail-lines", () => readJSON("rail-lines.json", { lines: {} }).lines || {});
+}
+// Jadwal KRL (scripts/build-krl-schedule.py) & hari libur (SKB 3 Menteri). Opsional.
+export function loadKrlSchedule() {
+  return memo("krl-schedule", () => readJSON("krl-schedule.json", { trips: [] }));
+}
+export function loadRailSchedules() {
+  return memo("rail-schedules", () => readJSON("rail-schedules.json", { stations: {}, sources: {} }));
+}
+export function loadHolidays() {
+  return memo("holidays", () => readJSON("holidays.json", { libur_nasional: [], cuti_bersama: [] }));
+}
+export function loadRailFares() {
+  return memo("rail-fares", () => readJSON("rail-fares.json", {}));
+}
+
 export const PLACE_CATEGORIES = {
   "mal": "Pusat perbelanjaan",
   "rumah-sakit": "Rumah sakit",

@@ -17,10 +17,10 @@ export function ogSpecs() {
   const specs = new Map();
 
   specs.set("umum", {
-    kicker: "Transjakarta · JakLingko · Mikrotrans",
-    title: "Panduan Rute & Halte Bus Jakarta",
+    kicker: "Transjakarta · KRL · MRT · LRT",
+    title: "Panduan Bus & Kereta Jabodetabek",
     accent: "#2652d9", accent2: "#db6300",
-    chips: [{ label: `${fmt(index.length)} rute` }, { label: `${fmt(Object.keys(stops).length)} halte` }, { label: "Stasiun & tempat" }],
+    chips: [{ label: `${fmt(index.length)} rute` }, { label: `${fmt(Object.keys(stops).length)} halte` }, { label: "Lin kereta & stasiun" }],
   });
 
   for (const e of index) {
