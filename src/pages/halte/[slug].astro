@@ -115,11 +115,21 @@ const intro = [
   group ? `Halte ini termasuk ${group.hasTerminal ? "kawasan " : ""}${group.name} bersama ${siblings.length} halte lain yang bisa dijangkau dengan berjalan kaki.` : "",
   !group && nearby.length ? `Halte terdekat adalah ${nameOf(nearby[0].id)} (sekitar ${formatDistance(nearby[0].distance)}).` : "",
 ].filter(Boolean).join(" ");
+// Data terstruktur untuk Google (lihat BaseLayout)
+const ldCrumbs = [{ name: "Daftar Halte", path: "/halte" }, ...(group ? [{ name: group.name, path: `/kawasan/${group.slug}` }] : []), { name: stop.name }];
+const ldSchema = {
+  "@type": "BusStop",
+  name: `Halte ${stop.name}`,
+  ...(me ? { geo: { "@type": "GeoCoordinates", latitude: me.lat, longitude: me.lng } } : {}),
+  address: { "@type": "PostalAddress", addressRegion: "DKI Jakarta", addressCountry: "ID" },
+};
 ---
 <BaseLayout
   title={`Halte ${stop.name}`}
   description={`Daftar ${serving.length} rute Transjakarta yang berhenti di halte ${stop.name}, lengkap dengan halte sebelum dan sesudahnya di tiap arah. ${typeLabel}${modes.length ? `, terhubung ke ${modes.map(m => m.label).join(", ")}` : ""}.`}
   canonicalPath={`/halte/${stopId}`}
+  crumbs={ldCrumbs}
+  schema={ldSchema}
 >
   <div class="crumb"><a href="/halte">Daftar Halte</a>{group && <> / <a href={`/kawasan/${group.slug}`}>{group.name}</a></>} / <span>{stop.name}</span></div>
   <header class={`page-hero stop-hero2 ${isBrt ? "is-brt" : ""}`}>

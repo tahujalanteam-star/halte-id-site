@@ -4,7 +4,7 @@ import { ROUTE_CATEGORIES, loadRoutesIndex, categoryOf } from "../lib/data.js";
 const usedCats = new Set(loadRoutesIndex().map(categoryOf));
 const footerCats = ROUTE_CATEGORIES.filter(c => usedCats.has(c.key));
 const CONTACT_EMAIL = "tahujalanteam@gmail.com";
-const { title, description, canonicalPath = "/" } = Astro.props;
+const { title, description, canonicalPath = "/", crumbs = null, schema = null } = Astro.props;
 const path = Astro.url.pathname;
 const isActive = (p) => (p === "/" ? path === "/" : path === p || path.startsWith(p + "/"));
 const siteUrl = Astro.site ? Astro.site.toString().replace(/\/$/, "") : "";
@@ -12,6 +12,25 @@ const canonicalUrl = `${siteUrl}${canonicalPath}`;
 // Gambar pratinjau tautan: dicocokkan otomatis dari path halaman (lihat src/lib/og-pages.js)
 const ogKey = canonicalPath.replace(/^\/|\/$/g, "");
 const ogImageUrl = `${siteUrl}${ogSpecs().has(ogKey) ? `/og/${ogKey}.png` : "/og/umum.png"}`;
+// Data terstruktur (JSON-LD) untuk Google: breadcrumb (crumbs = [{ name, path }]) + skema halaman (schema).
+// Dibuat saat build dari data yang sama dengan isi halaman; tidak ada data tambahan yang perlu dirawat.
+const abs = p => (p && /^https?:/.test(p) ? p : `${siteUrl}${p || ""}`);
+const ldGraph = [];
+if (canonicalPath === "/") {
+  ldGraph.push(
+    { "@type": "WebSite", "@id": `${siteUrl}/#website`, name: "halte.id", url: `${siteUrl}/`, inLanguage: "id-ID", publisher: { "@id": `${siteUrl}/#org` } },
+    { "@type": "Organization", "@id": `${siteUrl}/#org`, name: "halte.id", url: `${siteUrl}/`, logo: `${siteUrl}/icon-512.png`, email: CONTACT_EMAIL },
+  );
+}
+if (crumbs && crumbs.length) {
+  const list = [{ name: "Beranda", path: "/" }, ...crumbs];
+  ldGraph.push({
+    "@type": "BreadcrumbList",
+    itemListElement: list.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: abs(c.path || canonicalPath) })),
+  });
+}
+for (const node of [schema].flat().filter(Boolean)) ldGraph.push({ url: canonicalUrl, ...node });
+const jsonLd = ldGraph.length ? JSON.stringify({ "@context": "https://schema.org", "@graph": ldGraph }).replace(/</g, "\\u003c") : null;
 const pageTitle = title ? `${title} | halte.id` : "halte.id — Panduan Rute & Halte Bus Jakarta";
 const pageDescription = description || "Cari rute dan halte Transjakarta & JakLingko lengkap: jadwal, tarif, daftar pemberhentian, dan peta tiap koridor.";
 ---
@@ -35,6 +54,7 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
     <meta property="og:locale" content="id_ID" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content={ogImageUrl} />
+    {jsonLd && <script type="application/ld+json" set:html={jsonLd} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-48.png" type="image/png" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -484,8 +504,8 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
       .ctx-dir { margin-top: 1rem; }
       .route-ctx { --cl: var(--c); --past: color-mix(in srgb, var(--text-sub) 45%, transparent); }
       .ctx-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .15rem .8rem; margin: 0 0 .75rem; }
-      .ctx-label { margin: 0; display: inline-flex; align-items: center; gap: .35rem; font-size: .88rem; font-weight: 800; color: var(--text-main); }
-      .ctx-label svg { width: 16px; height: 16px; color: var(--cl); }
+      .ctx-label { margin: 0; font-size: .88rem; font-weight: 800; color: var(--text-main); }
+      .ctx-label svg { display: inline-block; width: 16px; height: 16px; margin-left: .3rem; vertical-align: -3px; color: var(--cl); }
       .ctx-pos { font-size: .74rem; font-weight: 600; color: var(--text-sub); }
       .ctx-track { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; }
       .ctx-node { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center;
@@ -523,6 +543,34 @@ const pageDescription = description || "Cari rute dan halte Transjakarta & JakLi
         .ctx-gap.is-past { display: none; }
         .ctx-node.is-past.l-past::before { display: none; }
         .ctx-gap a { font-size: .62rem; padding: .28rem .35rem; }
+      }
+      /* Layar sempit: baris halte disusun menurun seperti timeline rute, supaya nama halte panjang tidak bertabrakan.
+         Markup sama dengan versi mendatar; atas = sebelumnya, bawah = berikutnya. */
+      @media (max-width: 480px) {
+        .ctx-label svg { transform: rotate(90deg); }
+        .ctx-track { flex-direction: column; align-items: stretch; }
+        .ctx-node { flex: none; flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: .45rem; text-align: left;
+          min-height: 30px; padding: 4px 0 4px 34px; font-size: .86rem; }
+        .ctx-node::before, .ctx-node::after, .ctx-gap::before { width: 4px; height: auto; left: 10px; }
+        .ctx-node::before { top: 0; height: 15px; }
+        .ctx-node::after { top: 15px; bottom: 0; }
+        .ctx-node.l-past::before, .ctx-node.r-past::after, .ctx-gap.is-past::before {
+          width: 2px; left: 11px; height: auto; background: repeating-linear-gradient(180deg, var(--past) 0 5px, transparent 5px 9px); }
+        .ctx-node.l-past::before { height: 15px; top: 0; }
+        .ctx-node.r-past::after { top: 15px; bottom: 0; }
+        .ctx-node.is-past.l-past::before { display: block; }
+        .ctx-dot { left: 12px; top: 15px; transform: translate(-50%, -50%); }
+        .ctx-node.is-past .ctx-dot, .ctx-node.is-here .ctx-dot { top: 15px; }
+        /* Halte saat ini diberi ruang ekstra di bawah; panah berdiri sendiri di tengah jarak itu, tidak menempel ke titik */
+        .ctx-arrow { right: auto; left: 12px; top: auto; bottom: 3px; transform: translateX(-50%);
+          border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 11px solid var(--cl); border-bottom: 0; }
+        .ctx-node.is-here { padding-bottom: 36px; }
+        .ctx-role { margin-top: 0; font-size: .6rem; }
+        .ctx-gap, .ctx-gap.is-past { display: flex; width: auto; justify-content: flex-start; padding: 5px 0 5px 34px; }
+        .ctx-gap::before { top: 0; bottom: 0; }
+        .ctx-gap.is-future::before { background: repeating-linear-gradient(180deg, var(--cl) 0 6px, transparent 6px 10px); }
+        .ctx-gap a { margin-top: 0; font-size: .68rem; padding: .25rem .55rem; }
+        .ctx-endnote { margin: .35rem 0 0 34px; }
       }
       [data-theme="dark"] .route-ctx { --cl: color-mix(in srgb, var(--c) 72%, #fff); }
       .split-callout { margin: -.6rem 0 1.6rem; background: color-mix(in srgb, var(--primary) 8%, var(--card-bg)); border-color: color-mix(in srgb, var(--primary) 30%, transparent); }

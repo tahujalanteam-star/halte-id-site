@@ -59,6 +59,8 @@ const intro = [
   title={`${st.name}: Halte & Rute Transjakarta Terdekat`}
   description={`Halte Transjakarta terdekat dari ${st.name}${first ? `: ${first.stop.name} (${formatDistance(first.distance)})` : ""}. ${routeMap.size} rute bus untuk lanjut perjalanan, jarak dan arah jalan kaki.`}
   canonicalPath={`/stasiun/${st.slug}`}
+  crumbs={[{ name: "Stasiun Kereta", path: "/stasiun" }, { name: st.name }]}
+  schema={{ "@type": "TrainStation", name: st.name, geo: { "@type": "GeoCoordinates", latitude: st.lat, longitude: st.lng } }}
 >
   <div class="crumb"><a href="/stasiun">Stasiun Kereta</a> / <span>{st.name}</span></div>
   <header class="page-hero is-brt" style={`--hero-accent:${mode.color}`}>

@@ -31,6 +31,8 @@ const mapUrl = staticStopMap({ main: members.map((m, i) => { const c = coordOf(m
   title={`${group.name}: Halte & Rute Transjakarta`}
   description={`${allRoutes.length} rute Transjakarta di ${group.name}, tersebar di ${members.length} halte yang berdekatan: ${members.map(m => m.stop.name).join(", ")}. Lihat rute apa naik di halte mana.`}
   canonicalPath={`/kawasan/${slug}`}
+  crumbs={[{ name: "Kawasan Transit", path: "/kawasan" }, { name: group.name }]}
+  schema={{ "@type": "Place", name: group.name }}
 >
   <div class="crumb"><a href="/kawasan">Kawasan Transit</a> / <span>{group.name}</span></div>
   <header class="page-hero is-brt area-hero">

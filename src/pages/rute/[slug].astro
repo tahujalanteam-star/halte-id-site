@@ -92,11 +92,24 @@ function staticMapUrl(dirId, dirIndex) {
   const geometry = getDirectionGeometry(jalur, dirId, dirIndex);
   return routeMapUrl(geometry, { color: route.route_color || "#D90429", token: PUBLIC_MAPBOX_TOKEN });
 }
+// Data terstruktur untuk Google (lihat BaseLayout)
+const firstDir = directions[0]?.stop_ids || [];
+const ldStop = id => (stops[id] ? { "@type": "BusStop", name: stops[id].name } : undefined);
+const ldSchema = {
+  "@type": "BusTrip",
+  name: `Rute ${badgeText} ${routeName}`,
+  busNumber: badgeText,
+  provider: { "@type": "Organization", name: "Transjakarta" },
+  departureBusStop: ldStop(firstDir[0]),
+  arrivalBusStop: ldStop(firstDir[firstDir.length - 1]),
+};
 ---
 <BaseLayout
   title={`Rute ${badgeText} — ${routeName}`}
   description={`Jadwal, tarif, dan daftar halte pemberhentian rute ${badgeText} ${routeName}. ${operatingDays || ""} ${schedule ? `mulai ${schedule.first_departure} sampai ${schedule.last_departure}.` : ""}`}
   canonicalPath={`/rute/${routeSlug(summary)}`}
+  crumbs={[{ name: "Daftar Rute", path: "/rute" }, { name: `Rute ${badgeText}` }]}
+  schema={ldSchema}
 >
   <div class="crumb"><a href="/rute">Daftar Rute</a> / <span>{badgeText}</span></div>
 

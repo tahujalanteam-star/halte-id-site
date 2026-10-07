@@ -14,6 +14,7 @@ const title = page.parts > 1 ? `Halte Berawalan ${page.letter} (${page.label})` 
   title={`${title}: Daftar Halte Transjakarta & JakLingko`}
   description={`Daftar ${page.items.length} halte bus Jakarta berawalan ${page.label}${brtCount ? `, termasuk ${brtCount} halte BRT` : ""}. Pilih halte untuk melihat rute yang berhenti di sana.`}
   canonicalPath={`/halte/huruf/${page.slug}`}
+  crumbs={[{ name: "Daftar Halte", path: "/halte" }, { name: page.parts > 1 ? `Huruf ${page.letter} (${page.label})` : `Huruf ${page.label}` }]}
 >
   <div class="crumb"><a href="/halte">Daftar Halte</a> / <span>{page.label}</span></div>
   <header class="page-head">
