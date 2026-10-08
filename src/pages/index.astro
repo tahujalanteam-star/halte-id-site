@@ -47,10 +47,16 @@ while (heroColors.length < 4) heroColors.push(["#D90429", "#354992", "#efc94b", 
           <input id="site-search" type="search" enterkeyhint="search" autocomplete="off" placeholder="Rute, halte, stasiun, atau tempat: 1, Blok M…" aria-label="Cari rute atau halte" />
           <ul id="search-results" class="home-results" hidden></ul>
         </div>
-        <a href="/terdekat?cari=1" class="locate-btn">
-          <span class="lb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></span>
-          <span class="lb-text"><b>Halte terdekat</b><span>Pakai lokasimu</span></span>
-        </a>
+        <div class="home-actions">
+          <a href="/terdekat?cari=1" class="locate-btn">
+            <span class="lb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></span>
+            <span class="lb-text"><b>Halte terdekat</b><span>Pakai lokasimu</span></span>
+          </a>
+          <a href="/perjalanan" class="locate-btn">
+            <span class="lb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg></span>
+            <span class="lb-text"><b>Perjalanan</b><span>Dari mana ke mana</span></span>
+          </a>
+        </div>
       </div>
       <div class="home-stats">
         <a href="/rute"><b>{routes.length}</b> rute</a>

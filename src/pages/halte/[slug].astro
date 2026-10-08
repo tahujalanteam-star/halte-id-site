@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import TripButtons from "../../components/TripButtons.astro";
 import NearbyPlaces from "../../components/NearbyPlaces.astro";
 import { routeLabel, placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { stationsForStop, primaryMode, modeInfo, lineInfo, CURATED_MATCH } from "../../lib/rail.js";
@@ -149,7 +150,7 @@ const ldSchema = {
     </div>
   </header>
 
-  <p class="stop-intro">{intro}</p>
+  <TripButtons point={`halte/${stopId}`} name={stop.name} both />
 
   {stop.split_by_direction && (
     <aside class="callout split-callout">
@@ -193,7 +194,7 @@ const ldSchema = {
       </summary>
       <figure class="mini-map">
         <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} alt={`Peta lokasi halte ${stop.name} dan halte di sekitarnya`} width="760" height="320" />
-        <figcaption><span class="mm-dot is-main"></span>{stop.name} <span class="mm-dot"></span>halte sekitar (nomor sesuai daftar di bawah)
+        <figcaption><span class="mm-item"><span class="mm-dot is-main"></span>{stop.name}</span> <span class="mm-item"><span class="mm-dot"></span>halte sekitar (nomor sesuai daftar di bawah)</span>
           <a href={`https://www.google.com/maps/search/?api=1&query=${me.lat},${me.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
         </figcaption>
       </figure>
@@ -317,4 +318,9 @@ const ldSchema = {
       <p class="near-note">Nomor sesuai pin di peta. Jarak dihitung garis lurus. Rute jalan kaki sebenarnya bisa lebih jauh, terutama bila harus menyeberang jalan besar, tol, atau rel.</p>
     </section>
   )}
+  <!-- Ringkasan teks (juga bahan cuplikan mesin pencari): di akhir halaman agar info utama tampil lebih dulu -->
+  <section class="home-section page-about">
+    <h2>Ringkasan</h2>
+    <p class="stop-intro">{intro}</p>
+  </section>
 </BaseLayout>

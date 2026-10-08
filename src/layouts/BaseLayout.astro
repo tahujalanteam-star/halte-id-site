@@ -6,6 +6,8 @@ const footerCats = ROUTE_CATEGORIES.filter(c => usedCats.has(c.key));
 const CONTACT_EMAIL = "tahujalanteam@gmail.com";
 const { title, description, canonicalPath = "/", crumbs = null, schema = null, noindex = false } = Astro.props;
 const path = Astro.url.pathname;
+// Kotak cari di header: semua halaman kecuali beranda dan /cari (keduanya punya kotak cari besar sendiri)
+const showHeaderSearch = path !== "/" && !/^\/cari\/?$/.test(path);
 const isActive = (p) => (p === "/" ? path === "/" : path === p || path.startsWith(p + "/"));
 const siteUrl = Astro.site ? Astro.site.toString().replace(/\/$/, "") : "";
 const canonicalUrl = `${siteUrl}${canonicalPath}`;
@@ -491,9 +493,10 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       .stop-intro { color: var(--text-sub); max-width: 720px; margin: -.6rem 0 1.6rem; font-size: .95rem; }
       .mini-map { margin: 0 0 1.8rem; border-radius: var(--radius); overflow: hidden; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: var(--shadow); }
       .mini-map img { display: block; width: 100%; height: auto; aspect-ratio: 760 / 320; object-fit: cover; background: var(--badge-bg); }
-      .mini-map figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; padding: .6rem 1rem; font-size: .8rem; font-weight: 600; color: var(--text-sub); }
+      .mini-map figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem 1rem; padding: .6rem 1rem; font-size: .8rem; font-weight: 600; color: var(--text-sub); }
       .mini-map figcaption a { margin-left: auto; }
-      .mm-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pin-muted); }
+      .mm-item { display: inline-flex; align-items: center; gap: .4rem; }
+      .mm-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--pin-muted); }
       .mm-dot.is-main { background: var(--pin-main); }
       .map-toggle { margin: 0 0 1.8rem; border-radius: 18px; background: var(--card-bg); border: 1px solid var(--border-color); box-shadow: var(--shadow); overflow: hidden; }
       .map-toggle summary { display: flex; align-items: center; gap: .75rem; padding: .7rem 1rem; cursor: pointer; list-style: none; }
@@ -723,7 +726,8 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       }
       /* ===== Halte terdekat ===== */
       .home-search-row { display: flex; gap: .6rem; align-items: stretch; max-width: 760px; }
-      .home-search-row .home-search { flex: 1; max-width: none; }
+      .home-search-row .home-search { flex: 1; max-width: none; min-width: 0; }
+      .home-actions { display: flex; gap: .6rem; flex: none; }
       .home-hero-inner { max-width: 780px; }
       .home-hero h1 { max-width: 560px; }
       .locate-btn { flex: none; display: flex; align-items: center; gap: .6rem; padding: 0 1rem 0 .7rem; height: 56px; border-radius: 18px; color: var(--text-main);
@@ -750,6 +754,7 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       .routes-near-title { margin-top: 2rem; }
       @media (max-width: 640px) {
         .home-search-row { flex-direction: column; }
+        .home-actions { flex-direction: column; }
         .locate-btn { height: 52px; }
       }
       /* ===== Penyesuaian mode gelap ===== */
@@ -775,6 +780,54 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       #theme-toggle .ic-sun { display: none; }
       [data-theme="dark"] #theme-toggle .ic-sun { display: block; }
       [data-theme="dark"] #theme-toggle .ic-moon { display: none; }
+      /* Tautan ke perencana perjalanan */
+      .trip-cta { display: flex; flex-wrap: wrap; gap: .5rem; margin: -.6rem 0 1.4rem; }
+      .page-about .stop-intro { margin: 0; }
+      .tcta { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem 1rem; border-radius: 12px; font-weight: 700; font-size: .9rem;
+        color: var(--primary); background: var(--card-bg); border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border-color)); }
+      .tcta:hover { text-decoration: none; border-color: var(--primary); }
+      .tcta.is-main { color: #fff; background: var(--primary); border-color: var(--primary); }
+      .tcta svg { width: 17px; height: 17px; }
+      .home-trip { display: inline-flex; align-items: center; gap: .6rem; margin-top: .9rem; padding: .6rem .9rem; border-radius: 14px; font-size: .9rem; color: var(--text-sub);
+        background: color-mix(in srgb, var(--card-bg) 80%, transparent); border: 1px solid var(--border-color); max-width: 100%; }
+      .home-trip b { color: var(--text-main); }
+      .home-trip svg { width: 18px; height: 18px; color: var(--primary); flex: none; }
+      .home-trip:hover { text-decoration: none; border-color: var(--primary); }
+      .near-trip { margin: .4rem 0 1rem; }
+      /* Kotak cari header */
+      .hsearch { position: relative; flex: 1; max-width: 380px; margin: 0 auto 0 1.4rem; display: flex; align-items: center; }
+      .hsearch .hs-icon { position: absolute; left: 12px; width: 17px; height: 17px; color: var(--text-sub); pointer-events: none; }
+      .hsearch input { width: 100%; height: 38px; padding: 0 2.2rem 0 2.35rem; font-size: .9rem; font-weight: 500; color: var(--text-main);
+        background: color-mix(in srgb, var(--card-bg) 70%, var(--bg-color)); border: 1px solid var(--border-color); border-radius: 12px; transition: border-color .15s, background .15s; }
+      .hsearch input::placeholder { color: var(--text-sub); }
+      .hsearch input:focus { outline: none; border-color: var(--primary); background: var(--card-bg); }
+      .hsearch input::-webkit-search-cancel-button { display: none; }
+      .hs-kbd { position: absolute; right: 9px; font: 600 .72rem/1 ui-monospace, monospace; color: var(--text-sub); border: 1px solid var(--border-color);
+        border-radius: 6px; padding: .2rem .4rem; background: var(--card-bg); pointer-events: none; }
+      .hsearch:focus-within .hs-kbd, .hsearch.has-text .hs-kbd { display: none; }
+      .hs-back { display: none; }
+      header.site .hsearch + nav.site { margin-left: 1.25rem; }
+      .hs-results { right: auto; width: max(100%, 440px); top: calc(100% + 6px); }
+      .icon-btn { display: none; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); border-radius: 999px;
+        width: 36px; height: 36px; cursor: pointer; place-items: center; padding: 0; }
+      .icon-btn svg { width: 18px; height: 18px; }
+      @media (max-width: 760px) {
+        .hsearch { display: none; }
+        .icon-btn { display: grid; }
+        header.site.hs-on .container > :not(.hsearch) { display: none; }
+        /* backdrop-filter membuat position:fixed daftar saran ikut terkurung di header, jadi dimatikan saat terbuka */
+        header.site.hs-on { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--card-bg); }
+        header.site.hs-on .hsearch { display: flex; max-width: none; margin: 0; gap: .4rem; }
+        header.site.hs-on .hs-icon { left: calc(40px + .4rem + 12px); }
+        .hs-back { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 0; background: none; color: var(--text-main); cursor: pointer; padding: 0; border-radius: 10px; }
+        .hs-back svg { width: 22px; height: 22px; }
+        .hsearch input { height: 42px; font-size: 1rem; }
+        .hs-kbd { display: none; }
+        .hs-results { position: fixed; top: 61px; left: 0; right: 0; bottom: 0; width: auto; max-height: none; border-radius: 0; border: 0;
+          border-top: 1px solid var(--border-color); box-shadow: none; padding: .4rem .6rem calc(1rem + env(safe-area-inset-bottom)); }
+        .hs-results a { padding: .65rem .6rem; }
+        body.hs-lock { overflow: hidden; }
+      }
       /* Mobile: header ringkas + bottom tab bar */
       .tabbar { display: none; }
       @media (max-width: 640px) {
@@ -794,7 +847,21 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
     <header class="site">
       <div class="container">
         <a class="logo" href="/"><span class="logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c4 0 4-10 9-10s5 10 9 10"/><circle cx="12" cy="7" r="1.6" fill="currentColor"/></svg></span><span>halte<span class="tld">.id</span></span></a>
+        {showHeaderSearch && (
+          <form class="hsearch" id="hsearch" action="/cari" method="get" role="search">
+            <button type="button" class="hs-back" id="hs-close" aria-label="Tutup pencarian"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
+            <svg class="hs-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="hs-input" name="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cari rute, halte, tempat…" aria-label="Cari rute, halte, stasiun, atau tempat" />
+            <kbd class="hs-kbd" title="Tekan / untuk mencari">/</kbd>
+            <ul id="hs-suggest" class="home-results hs-results" hidden></ul>
+          </form>
+        )}
         <nav class="site">
+          {showHeaderSearch && (
+            <button id="hs-open" class="icon-btn" type="button" aria-label="Cari" title="Cari">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            </button>
+          )}
           <a href="/halte" aria-current={isActive("/halte") || isActive("/terdekat") ? "page" : undefined}>Halte</a>
           <a href="/rute" aria-current={isActive("/rute") ? "page" : undefined}>Bus</a>
           <a href="/kereta" aria-current={isActive("/kereta") || isActive("/stasiun") ? "page" : undefined}>Kereta</a>
@@ -822,6 +889,7 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
           <a href="/rute">Daftar Rute</a>
           <a href="/halte">Daftar Halte</a>
           <a href="/terdekat">Halte Terdekat</a>
+          <a href="/perjalanan">Rencanakan Perjalanan</a>
           <a href="/kawasan">Kawasan Transit</a>
           <a href="/tempat">Tempat &amp; Gedung</a>
           <a href="/stasiun">Stasiun Kereta</a>
@@ -863,6 +931,34 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
         document.documentElement.setAttribute("data-theme", next);
         try { localStorage.setItem("theme", next); } catch (e) {}
       });
+    </script>
+    <script>
+      import { attachSuggest, loadIndex } from "../lib/search-client.js";
+      const form = document.getElementById("hsearch");
+      if (form) initHeaderSearch(form);
+      function initHeaderSearch(form) {
+        const input = document.getElementById("hs-input");
+        const list = document.getElementById("hs-suggest");
+        const header = document.querySelector("header.site");
+        attachSuggest(input, list);
+        const sync = () => form.classList.toggle("has-text", !!input.value);
+        input.addEventListener("input", sync);
+        const mobile = () => matchMedia("(max-width: 760px)").matches;
+        const open = () => { header.classList.add("hs-on"); document.body.classList.add("hs-lock"); input.focus(); loadIndex().catch(() => {}); };
+        const close = () => { header.classList.remove("hs-on"); document.body.classList.remove("hs-lock"); list.hidden = true; input.blur(); };
+        document.getElementById("hs-open").addEventListener("click", open);
+        document.getElementById("hs-close").addEventListener("click", close);
+        input.addEventListener("keydown", e => { if (e.key === "Escape" && mobile()) close(); });
+        // Pintasan "/" untuk langsung mengetik
+        document.addEventListener("keydown", e => {
+          if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+          const t = e.target;
+          if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+          e.preventDefault();
+          mobile() ? open() : input.focus();
+        });
+        matchMedia("(max-width: 760px)").addEventListener("change", e => { if (!e.matches) close(); });
+      }
     </script>
   </body>
 </html>

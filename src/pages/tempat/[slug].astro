@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import TripButtons from "../../components/TripButtons.astro";
 import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, loadPlaces, placeCategoryLabel, placeKindLabel } from "../../lib/data.js";
 import { stopsNearPoint, coordOf, distanceM, formatDistance, compassDir, staticStopMap } from "../../lib/stop-insights.js";
 
@@ -65,7 +66,7 @@ const intro = first
     </div>
   </header>
 
-  <p class="stop-intro">{intro}</p>
+  <TripButtons point={`tempat/${slug}`} name={place.name} />
 
   {mapUrl && (
     <details class="map-toggle" id="place-map">
@@ -76,7 +77,7 @@ const intro = first
       </summary>
       <figure class="mini-map">
         <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} alt={`Peta ${place.name} dan halte terdekat`} width="760" height="320" />
-        <figcaption><span class="mm-dot is-main"></span>{place.name} <span class="mm-dot"></span>halte (nomor sesuai daftar)
+        <figcaption><span class="mm-item"><span class="mm-dot is-main"></span>{place.name}</span> <span class="mm-item"><span class="mm-dot"></span>halte (nomor sesuai daftar)</span>
           <a href={`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
         </figcaption>
       </figure>
@@ -126,4 +127,9 @@ const intro = first
       </div>
     </section>
   ))}
+  <!-- Ringkasan teks (juga bahan cuplikan mesin pencari): di akhir halaman agar info utama tampil lebih dulu -->
+  <section class="home-section page-about">
+    <h2>Ringkasan</h2>
+    <p class="stop-intro">{intro}</p>
+  </section>
 </BaseLayout>

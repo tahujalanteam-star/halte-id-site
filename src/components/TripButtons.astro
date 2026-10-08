@@ -1,0 +1,11 @@
+---
+// Tombol ke perencana perjalanan (/perjalanan) dengan titik terisi otomatis.
+// point = path titik tanpa "/" (mis. "halte/blok-m"); both = tampilkan juga "Rute dari sini".
+const { point, both = false, name = "" } = Astro.props;
+const q = k => `/perjalanan?${k}=${point}`;
+const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg>';
+---
+<div class="trip-cta">
+  <a href={q("ke")} class="tcta is-main" title={name ? `Rencanakan perjalanan ke ${name}` : undefined}><Fragment set:html={icon} />Rute ke sini</a>
+  {both && <a href={q("dari")} class="tcta" title={name ? `Rencanakan perjalanan dari ${name}` : undefined}>Rute dari sini</a>}
+</div>

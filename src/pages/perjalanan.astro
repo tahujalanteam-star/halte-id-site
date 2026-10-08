@@ -1,0 +1,332 @@
+---
+// Phase 3a: form Dari – Ke yang menyerahkan perhitungan rute ke Google Maps (mode transportasi umum).
+// Statis: titik dipilih dari /data/search.json, koordinatnya dari /data/geo/titik.json (urutan sama).
+// Isi otomatis lewat URL: /perjalanan?dari=halte/blok-m&ke=tempat/<slug>  (dari=lokasi = lokasi perangkat)
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const pinIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+---
+<BaseLayout
+  title="Rencanakan Perjalanan dengan Bus & Kereta"
+  description="Pilih titik awal dan tujuan dari halte, stasiun, atau tempat di Jakarta, lalu buka pilihan rute transportasi umumnya di Google Maps."
+  canonicalPath="/perjalanan"
+  crumbs={[{ name: "Rencanakan Perjalanan" }]}
+>
+  <header class="page-head">
+    <p class="page-kicker">Perjalanan</p>
+    <h1>Rencanakan Perjalanan</h1>
+    <p class="lead">Pilih titik awal dan tujuan dari halte, stasiun, atau tempat. Pilihan rute, waktu tempuh, dan jadwal terbarunya dibuka di Google Maps.</p>
+  </header>
+
+  <section class="trip-card" aria-label="Form perjalanan">
+    <div class="trip-rail" aria-hidden="true"><span class="trip-dot is-from"></span><span class="trip-line"></span><span class="trip-dot is-to"></span></div>
+    <div class="trip-fields">
+      <div class="trip-field" id="f-dari">
+        <label for="in-dari">Dari</label>
+        <div class="trip-search home-search">
+          <Fragment set:html={pinIcon} />
+          <input id="in-dari" type="search" enterkeyhint="search" autocomplete="off" placeholder="Halte, stasiun, tempat" />
+          <ul class="home-results" hidden></ul>
+        </div>
+        <div class="trip-chosen" hidden></div>
+        <button type="button" class="trip-me" id="use-me">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+          Pakai lokasi saya
+        </button>
+      </div>
+      <div class="trip-field" id="f-ke">
+        <label for="in-ke">Ke</label>
+        <div class="trip-search home-search">
+          <Fragment set:html={pinIcon} />
+          <input id="in-ke" type="search" enterkeyhint="search" autocomplete="off" placeholder="Halte, stasiun, tempat" />
+          <ul class="home-results" hidden></ul>
+        </div>
+        <div class="trip-chosen" hidden></div>
+      </div>
+    </div>
+    <button type="button" class="trip-swap" id="swap" aria-label="Tukar Dari dan Ke" title="Tukar Dari dan Ke">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M7 4 3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4"/></svg>
+    </button>
+  </section>
+
+  <section id="direct" class="trip-direct" aria-live="polite" hidden></section>
+
+  <div class="trip-actions">
+    <a id="go" class="trip-go is-off" href="https://www.google.com/maps" target="_blank" rel="noopener nofollow" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>
+      <span>Buka rute di Google Maps</span>
+    </a>
+    <p id="go-hint" class="trip-hint">Pilih titik Dari dan Ke dulu.</p>
+  </div>
+
+  <p class="trip-note">halte.id tidak menghitung rute sendiri. Google Maps menampilkan pilihan rute bus dan kereta, waktu tempuh, dan kondisi terbaru. Saat tombol diklik, koordinat titik Dari dan Ke dikirim ke Google. Bila memakai lokasi saya, lokasi perangkat hanya dipakai di browser untuk mencari halte terdekat dan tidak dikirim ke halte.id.</p>
+
+  <style is:global>
+    .trip-card { position: relative; display: grid; grid-template-columns: 22px 1fr 44px; gap: .9rem; align-items: stretch; margin-top: 1.2rem; padding: 1.1rem 1rem 1.1rem 1.1rem;
+      background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; box-shadow: var(--shadow); }
+    .trip-rail { display: flex; flex-direction: column; align-items: center; padding: 2.15rem 0 3.4rem; }
+    .trip-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; border: 3px solid var(--primary); background: var(--card-bg); }
+    .trip-dot.is-to { border-color: var(--acc-red); background: var(--acc-red); }
+    .trip-line { flex: 1; width: 2px; margin: 4px 0; background: repeating-linear-gradient(var(--border-color) 0 5px, transparent 5px 9px); }
+    .trip-fields { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+    .trip-field label { display: block; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-sub); margin-bottom: .35rem; }
+    .trip-search { max-width: none; }
+    .trip-search input { height: 50px; font-size: 1rem; border-radius: 14px; box-shadow: none; }
+    .trip-search > svg { left: 15px; width: 18px; height: 18px; }
+    .trip-search input { padding-left: 2.7rem; }
+    .trip-search .home-results { z-index: 25; }
+    .trip-chosen { display: flex; align-items: center; gap: .7rem; min-height: 50px; padding: .45rem .5rem .45rem .7rem; border: 2px solid var(--border-color); border-radius: 14px; background: var(--card-bg); }
+    .trip-chosen .tc-main { display: flex; align-items: center; gap: .75rem; min-width: 0; flex: 1; color: var(--text-main); }
+    .trip-chosen .tc-main:hover { text-decoration: none; }
+    .trip-chosen .badge-bus { min-width: 2.5rem; height: 2rem; }
+    .trip-chosen .res-text b { white-space: normal; }
+    .trip-chosen .tc-clear { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 0; background: none; color: var(--text-sub); cursor: pointer; display: grid; place-items: center; }
+    .trip-chosen .tc-clear:hover { background: var(--bg-color); color: var(--text-main); }
+    .trip-chosen .tc-clear svg { width: 18px; height: 18px; }
+    .res-pin.is-me { background: color-mix(in srgb, var(--primary) 14%, transparent); color: var(--primary); }
+    .trip-me { margin-top: .5rem; display: inline-flex; align-items: center; gap: .4rem; font: inherit; font-size: .85rem; font-weight: 700; color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 9%, transparent); border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent); border-radius: 999px; padding: .35rem .8rem; cursor: pointer; }
+    .trip-me svg { width: 16px; height: 16px; }
+    .trip-swap { align-self: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); cursor: pointer; display: grid; place-items: center; }
+    .trip-swap:hover { border-color: var(--primary); color: var(--primary); }
+    .trip-swap[disabled] { opacity: .4; cursor: default; }
+    .trip-swap svg { width: 20px; height: 20px; }
+    .trip-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin-top: 1.1rem; }
+    .trip-go { display: inline-flex; align-items: center; gap: .55rem; padding: .85rem 1.3rem; border-radius: 14px; font-weight: 800; font-size: 1rem;
+      color: #fff; background: var(--primary); box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--primary) 70%, transparent); }
+    .trip-go:hover { text-decoration: none; filter: brightness(1.06); }
+    .trip-go svg { width: 20px; height: 20px; }
+    .trip-go.is-off { background: var(--badge-bg); color: var(--text-sub); box-shadow: none; pointer-events: none; }
+    .trip-hint { margin: 0; color: var(--text-sub); font-size: .9rem; font-weight: 600; }
+    .trip-hint.is-warn { color: var(--acc-red); }
+    .trip-note { margin-top: 1.4rem; color: var(--text-sub); font-size: .85rem; line-height: 1.55; max-width: 640px; }
+    .trip-direct { margin-top: 1.1rem; padding: 1rem 1.1rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 18px; box-shadow: var(--shadow); }
+    .trip-direct h2 { margin: 0 0 .6rem; font-size: 1.05rem; display: flex; align-items: center; gap: .5rem; }
+    .trip-direct h2 .count { font-size: .75rem; font-weight: 700; padding: .1rem .5rem; border-radius: 999px; background: var(--badge-bg); color: var(--text-sub); }
+    .td-ends { list-style: none; margin: 0 0 .8rem; padding: 0; display: grid; gap: .3rem; font-size: .88rem; color: var(--text-sub); }
+    .td-ends li { line-height: 1.5; }
+    .td-ends a { font-weight: 700; }
+    .td-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2.5px solid var(--primary); margin-right: .45rem; vertical-align: -1px; box-sizing: border-box; }
+    .td-dot.is-to { border-color: var(--acc-red); background: var(--acc-red); }
+    .td-m { font-size: .78rem; font-weight: 700; color: var(--text-sub); background: var(--badge-bg); border-radius: 999px; padding: .05rem .45rem; }
+    .td-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+    .td-route { display: flex; gap: .8rem; align-items: flex-start; padding: .7rem .8rem; border: 1px solid var(--border-color); border-radius: 14px; color: var(--text-main); }
+    .td-route:hover { text-decoration: none; border-color: var(--primary); }
+    .td-route .badge-bus { flex: none; min-width: 2.6rem; height: 2rem; border-radius: 9px; margin-top: .1rem; }
+    .td-badges { display: flex; flex-direction: column; gap: .3rem; flex: none; }
+    .td-route .td-rail { font-size: .72rem; padding: 0 .45rem; max-width: 6.5rem; text-align: center; line-height: 1.1; }
+    .td-body { display: flex; flex-direction: column; gap: .15rem; min-width: 0; font-size: .88rem; }
+    .td-body > b { font-size: .95rem; }
+    .td-leg { color: var(--text-sub); }
+    .td-leg b { color: var(--text-main); font-weight: 700; }
+    .td-more { margin: .5rem 0 0; font-size: .85rem; color: var(--text-sub); font-weight: 600; }
+    .td-none, .td-wait { margin: 0; color: var(--text-sub); font-weight: 600; font-size: .92rem; }
+    .td-note { margin: .8rem 0 0; font-size: .8rem; color: var(--text-sub); }
+    @media (max-width: 640px) {
+      .trip-card { grid-template-columns: 16px 1fr 40px; gap: .6rem; padding: .9rem .7rem .9rem .8rem; }
+      .trip-swap { width: 40px; height: 40px; }
+      .trip-go { width: 100%; justify-content: center; }
+    }
+  </style>
+
+  <script>
+    import { loadIndex, findByKey, attachSuggest, resultLink, listOf } from "../lib/search-client.js";
+    const $ = id => document.getElementById(id);
+    const ME = { t: "me", key: "lokasi", label: "Lokasi saya", sub: "Dibaca langsung oleh Google Maps" };
+    const state = { dari: null, ke: null };
+    let titik = null;
+    const loadTitik = () => (titik ||= fetch("/data/geo/titik.json").then(r => r.json()));
+    const coordOf = async it => { const t = await loadTitik(); return t[it.t]?.[it.i] || null; };
+
+    const field = role => {
+      const box = $(`f-${role}`);
+      return { box, input: box.querySelector("input"), search: box.querySelector(".trip-search"), list: box.querySelector(".home-results"), chosen: box.querySelector(".trip-chosen") };
+    };
+    const F = { dari: field("dari"), ke: field("ke") };
+
+    function chosenEl(it, role) {
+      const el = F[role].chosen;
+      el.innerHTML = "";
+      let main;
+      if (it.t === "me") {
+        main = document.createElement("span");
+        main.innerHTML = '<span class="res-pin is-me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></span><span class="res-text"><b></b><small></small></span>';
+        main.querySelector("b").textContent = it.label;
+        main.querySelector("small").textContent = it.sub;
+      } else {
+        main = resultLink(it); // tautan ke halaman titik itu
+        main.querySelector("small").textContent = main.querySelector("small").textContent.replace(" · lihat halte terdekat", "");
+      }
+      main.classList.add("tc-main");
+      const clear = document.createElement("button");
+      clear.type = "button"; clear.className = "tc-clear"; clear.setAttribute("aria-label", `Hapus titik ${role === "dari" ? "Dari" : "Ke"}`);
+      clear.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+      clear.onclick = () => { setPoint(role, null); F[role].input.focus(); };
+      el.append(main, clear);
+    }
+
+    function setPoint(role, it, { quiet = false } = {}) {
+      state[role] = it;
+      const f = F[role];
+      f.search.hidden = !!it; f.chosen.hidden = !it;
+      if (it) chosenEl(it, role); else f.input.value = "";
+      if (role === "dari") $("use-me").hidden = !!it;
+      if (!quiet) syncUrl();
+      update();
+    }
+
+    function syncUrl() {
+      const p = new URLSearchParams();
+      if (state.dari) p.set("dari", state.dari.key);
+      if (state.ke) p.set("ke", state.ke.key);
+      const qs = p.toString().replace(/%2F/g, "/");
+      history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
+    }
+
+    const fmt = c => `${c[0]},${c[1]}`;
+    async function update() {
+      const go = $("go"), hint = $("go-hint");
+      const off = msg => { go.classList.add("is-off"); go.setAttribute("aria-disabled", "true"); hint.textContent = msg; hint.classList.toggle("is-warn", msg.startsWith("Titik")); hint.hidden = false; };
+      $("swap").disabled = state.dari?.t === "me" || !(state.dari || state.ke);
+      const { dari, ke } = state;
+      $("direct").hidden = true;
+      if (!dari || !ke) return off(!dari && !ke ? "Pilih titik Dari dan Ke dulu." : !dari ? "Tinggal pilih titik Dari." : "Tinggal pilih titik Ke.");
+      if (dari.key === ke.key) return off("Titik Dari dan Ke sama. Pilih tujuan lain.");
+      off("Menyiapkan…");
+      const [a, b] = await Promise.all([dari.t === "me" ? null : coordOf(dari), coordOf(ke)]);
+      if (state.dari !== dari || state.ke !== ke) return; // pilihan berubah saat menunggu
+      if ((dari.t !== "me" && !a) || !b) return off("Titik ini belum punya koordinat di data kami.");
+      const u = new URL("https://www.google.com/maps/dir/");
+      u.searchParams.set("api", "1");
+      if (a) u.searchParams.set("origin", fmt(a)); // tanpa origin = lokasi perangkat
+      u.searchParams.set("destination", fmt(b));
+      u.searchParams.set("travelmode", "transit");
+      go.href = u.toString();
+      go.classList.remove("is-off"); go.removeAttribute("aria-disabled");
+      hint.hidden = true;
+      checkDirect(dari, ke, a, b);
+    }
+
+    // ---------- Cek bus & kereta langsung ----------
+    // Halte dalam 600 m dan stasiun dalam 800 m dari kedua titik; rute/lin yang berhenti di dekat Dari lalu,
+    // searah, di dekat Ke. Bus dan kereta tampil dalam satu daftar.
+    const R_HALTE = 600, R_STASIUN = 800;
+    let urutan = null, myPos = null;
+    const loadUrutan = () => (urutan ||= fetch("/data/rute-urutan.json").then(r => r.json()));
+    const dist = (p, q) => { const k = Math.PI / 180, x = (q[1] - p[1]) * k * Math.cos((p[0] + q[0]) / 2 * k), y = (q[0] - p[0]) * k; return Math.hypot(x, y) * 6371000; };
+    const near = (pt, list, radius) => {
+      const out = new Map(), deg = radius / 90000;
+      list.forEach((c, i) => { if (c && Math.abs(c[0] - pt[0]) < deg && Math.abs(c[1] - pt[1]) < deg * 1.1) { const d = dist(pt, c); if (d <= radius) out.set(i, d); } });
+      return out;
+    };
+    const nearest = m => [...m.entries()].sort((x, y) => x[1] - y[1])[0];
+    // Skor ≈ menit: per pemberhentian (bus 2, kereta 3) + jalan kaki 60 m/menit (termasuk menyeberang). Satu hasil terbaik per rute/lin.
+    // seqs: [[kunci, ..., urutan]] dengan urutan di elemen terakhir
+    function direct(A, B, seqs, perStop, mode) {
+      const best = new Map();
+      for (const row of seqs) {
+        const id = row[0], seq = row.at(-1);
+        let a = null;
+        for (let j = 0; j < seq.length; j++) {
+          const h = seq[j];
+          if (a && B.has(h) && h !== a.h) {
+            const dB = B.get(h), score = (j - a.i) * perStop + (a.d + dB) / 60, cur = best.get(id);
+            if (!cur || score < cur.score) best.set(id, { mode, row, from: a.h, to: h, n: j - a.i, dA: a.d, dB, score });
+          }
+          if (A.has(h)) { const d = A.get(h), sc = d / 60 - perStop * j; if (!a || sc < a.sc) a = { i: j, h, d, sc }; }
+        }
+      }
+      return [...best.values()];
+    }
+    const getMyPos = () => myPos || new Promise((ok, fail) => {
+      if (!navigator.geolocation) return fail(new Error("tidak didukung"));
+      navigator.geolocation.getCurrentPosition(p => { myPos = [p.coords.latitude, p.coords.longitude]; ok(myPos); }, fail, { enableHighAccuracy: true, timeout: 12000, maximumAge: 120000 });
+    });
+    const m = d => d < 1 ? "" : d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1).replace(".", ",")} km`;
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    const walk = d => d >= 1 ? ` <span class="td-m">jalan ${m(d)}</span>` : "";
+
+    async function checkDirect(dari, ke, a, b) {
+      const box = $("direct");
+      const show = html => { box.innerHTML = html; box.hidden = false; };
+      const stale = () => state.dari !== dari || state.ke !== ke;
+      show('<p class="td-wait">Mengecek bus dan kereta langsung…</p>');
+      try {
+        if (!a) {
+          show('<p class="td-wait">Membaca lokasi perangkat untuk mencari halte dan stasiun terdekat…</p>');
+          try { a = await getMyPos(); }
+          catch { if (!stale()) show('<p class="td-none">Lokasi perangkat tidak bisa dibaca, jadi bus dan kereta langsung belum dicek. Tombol Google Maps tetap bisa dipakai.</p>'); return; }
+        }
+        const [t, U] = await Promise.all([loadTitik(), loadUrutan(), loadIndex()]);
+        if (stale()) return;
+        const H = listOf("h"), Rt = listOf("r"), St = listOf("s");
+        const hA = near(a, t.h, R_HALTE), hB = near(b, t.h, R_HALTE);
+        const sA = near(a, t.s, R_STASIUN), sB = near(b, t.s, R_STASIUN);
+        const endLine = (hm, sm, which) => {
+          const cls = which === "Dari" ? "is-from" : "is-to", nh = nearest(hm), ns = nearest(sm);
+          const part = (n, list, kind) => `${kind ? kind + " " : ""}<a href="${list[n[0]].url}">${esc(list[n[0]].label)}</a>${n[1] >= 1 ? ` <span class="td-m">${m(n[1])}</span>` : ""}`;
+          const bits = [nh && part(nh, H, "halte"), ns && part(ns, St, "")].filter(Boolean);
+          return `<li><span class="td-dot ${cls}"></span>Terdekat dari titik ${which}: ${bits.length ? bits.join(" · ") : "tidak ada halte atau stasiun di sekitarnya"}</li>`;
+        };
+        const ends = `<ul class="td-ends">${endLine(hA, sA, "Dari")}${endLine(hB, sB, "Ke")}</ul>`;
+        const note = '<p class="td-note">Rute dari data halte.id. Cek jadwal dan kondisi terbaru di Google Maps.</p>';
+        const title = n => `<h2>Bus &amp; kereta langsung${n ? ` <span class="count">${n} pilihan</span>` : ""}</h2>`;
+        // Lin kereta yang berbagi jalur (mis. LRT Cibubur & Bekasi Kuningan–Pancoran) digabung jadi satu pilihan
+        const rail = [];
+        for (const h of direct(sA, sB, U.k || [], 3, "rail").sort((x, y) => x.score - y.score)) {
+          const same = rail.find(x => x.from === h.from && x.to === h.to);
+          if (same) same.rows.push(h.row); else rail.push({ ...h, rows: [h.row] });
+        }
+        const hits = [...direct(hA, hB, U.r, 2, "bus"), ...rail].sort((x, y) => x.score - y.score);
+        if (!hits.length) {
+          const why = (!hA.size && !sA.size) || (!hB.size && !sB.size) ? "Tidak ada halte atau stasiun di dekat salah satu titik." : "Tidak ada bus atau kereta langsung.";
+          return show(`${title(0)}${ends}<p class="td-none">${why} Lihat pilihan transit di Google Maps.</p>`);
+        }
+        const items = hits.slice(0, 3).map(h => {
+          if (h.mode === "bus") {
+            const r = Rt[h.row[0]];
+            return `<li><a class="td-route" href="${r.url}">
+              <span class="badge-bus" style="--c:${r.c};--on:${r.on}">${esc(r.id)}</span>
+              <span class="td-body"><b>${esc(r.label)}</b>
+                <span class="td-leg">Naik di <b>${esc(H[h.from].label)}</b>${walk(h.dA)}</span>
+                <span class="td-leg">Turun di <b>${esc(H[h.to].label)}</b>${walk(h.dB)} · ${h.n} halte</span></span></a></li>`;
+          }
+          const [key] = h.row;
+          const badges = h.rows.map(([, badge, color]) => `<span class="badge-bus td-rail" style="--c:${color};--on:#fff">${esc(badge)}</span>`).join("");
+          return `<li><a class="td-route" href="/kereta/${key}">
+            <span class="td-badges">${badges}</span>
+            <span class="td-body"><b>${esc(h.rows.map(r => r[3]).join(" / "))}</b>
+              <span class="td-leg">Naik di <b>${esc(St[h.from].label)}</b>${walk(h.dA)}</span>
+              <span class="td-leg">Turun di <b>${esc(St[h.to].label)}</b>${walk(h.dB)} · ${h.n} stasiun</span></span></a></li>`;
+        }).join("");
+        const more = hits.length > 3 ? `<p class="td-more">dan ${hits.length - 3} pilihan langsung lain</p>` : "";
+        show(`${title(hits.length)}${ends}<ul class="td-list">${items}</ul>${more}${note}`);
+      } catch {
+        if (!stale()) show('<p class="td-none">Data rute gagal dimuat. Tombol Google Maps tetap bisa dipakai.</p>');
+      }
+    }
+
+    const notRoute = it => it.t !== "r";
+    for (const role of ["dari", "ke"]) attachSuggest(F[role].input, F[role].list, { onPick: it => setPoint(role, it), filter: notRoute, max: 7 });
+    $("use-me").onclick = () => setPoint("dari", ME);
+    $("swap").onclick = () => { const { dari, ke } = state; setPoint("dari", ke, { quiet: true }); setPoint("ke", dari); };
+
+    // Isi dari URL
+    const params = new URLSearchParams(location.search);
+    const want = { dari: params.get("dari"), ke: params.get("ke") };
+    if (want.dari === "lokasi") setPoint("dari", ME, { quiet: true });
+    if ((want.dari && want.dari !== "lokasi") || want.ke) {
+      loadIndex().then(() => {
+        for (const role of ["dari", "ke"]) {
+          const k = want[role];
+          if (!k || k === "lokasi") continue;
+          const it = findByKey(k);
+          if (it && notRoute(it)) setPoint(role, it, { quiet: true });
+        }
+        syncUrl(); update();
+        if (!state.dari) F.dari.input.focus(); else if (!state.ke) F.ke.input.focus();
+      }, () => {});
+    } else update();
+    loadTitik().catch(() => { titik = null; });
+  </script>
+</BaseLayout>

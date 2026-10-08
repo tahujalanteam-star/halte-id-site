@@ -1,7 +1,7 @@
 // Pencarian di browser: dipakai kotak cari beranda, halaman Tempat, dan halaman hasil /cari.
 // Indeks /data/search.json diunduh sekali (lihat src/pages/data/search.json.js).
 
-const fold = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const fold = s => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 const key = s => fold(s).replace(/[^a-z0-9]/g, "");
 // Singkatan yang sering diketik → bentuk yang dipakai di data
 const ABBR = { sdn: "sd negeri", smpn: "smp negeri", sman: "sma negeri", smkn: "smk negeri", mtsn: "mts negeri", univ: "universitas" };
@@ -14,7 +14,12 @@ export const TYPES = {
   p: { label: "Tempat", one: "Tempat" },
 };
 
-let data = null, loading = null;
+let data = null, loading = null, byKey = null;
+// Cari entri dari path, mis. "halte/blok-m" atau "tempat/sma-negeri-8-jakarta" (null bila tidak ada)
+export const findByKey = k => byKey?.get(k) || null;
+// Semua entri satu jenis ("r", "s", "h", "p") dalam urutan search.json; null bila indeks belum dimuat
+const _lists = {};
+export const listOf = t => data ? (_lists[t] ||= data.filter(it => it.t === t)) : null;
 export function loadIndex() {
   return (loading ||= fetch("/data/search.json").then(r => r.json()).then(d => {
     const prep = it => { it.f = fold(it.label); it.fa = fold(it.alias || ""); it.words = (it.f + " " + it.fa + " " + fold(it.kind || "")).split(/[^a-z0-9]+/).filter(Boolean); return it; };
@@ -24,6 +29,10 @@ export function loadIndex() {
       ...d.h.map(([label, id, brt]) => ({ t: "h", label, url: `/halte/${id}`, brt, w: 2 })),
       ...d.p.map(([label, alias, slug, cat, kind, pop]) => ({ t: "p", label, alias, url: `/tempat/${slug}`, cat, kind: kind || cat, w: pop ? 1 : 3 })),
     ].map(prep);
+    // i = urutan dalam jenisnya (sama dengan urutan di search.json dan /data/geo/titik.json); key = path tanpa "/"
+    const seen = {};
+    for (const it of data) { it.i = seen[it.t] = (seen[it.t] ?? -1) + 1; it.key = it.url.slice(1); }
+    byKey = new Map(data.map(it => [it.key, it]));
     return data;
   }).catch(e => { loading = null; throw e; }));
 }
@@ -89,7 +98,10 @@ export const resultsUrl = q => `/cari?q=${encodeURIComponent(q.trim())}`;
 
 // Saran saat mengetik. Panah atas/bawah memilih saran; Enter membuka saran terpilih,
 // atau halaman hasil lengkap bila belum ada yang dipilih.
-export function attachSuggest(input, list, { max = 8 } = {}) {
+// Mode pilih (onPick): saran tidak membuka halaman, tetapi diserahkan ke onPick(item); Enter memilih saran
+// terpilih atau yang teratas. filter(item) membatasi jenis saran (mis. tanpa rute untuk form perjalanan).
+export function attachSuggest(input, list, { max = 8, onPick = null, filter = null } = {}) {
+  let shown = [];
   let active = -1;
   const links = () => [...list.querySelectorAll("a")];
   const setActive = i => {
@@ -103,11 +115,13 @@ export function attachSuggest(input, list, { max = 8 } = {}) {
     const q = input.value.trim();
     list.innerHTML = ""; active = -1;
     if (!q) { list.hidden = true; return; }
-    const all = search(q);
+    let all = search(q);
     if (!all) { loadIndex().then(render, () => {}); msg("Memuat data…"); list.hidden = false; return; }
-    if (!all.length) msg("Tidak ditemukan. Coba nomor rute, nama halte, atau ejaan lain.");
-    all.slice(0, max).forEach(it => { const li = document.createElement("li"); li.appendChild(resultLink(it)); list.appendChild(li); });
-    if (all.length) {
+    if (filter) all = all.filter(filter);
+    if (!all.length) msg(onPick ? "Tidak ditemukan. Coba nama halte, stasiun, atau tempat lain." : "Tidak ditemukan. Coba nomor rute, nama halte, atau ejaan lain.");
+    shown = all.slice(0, max);
+    shown.forEach((it, j) => { const li = document.createElement("li"); const a = resultLink(it); a.dataset.j = j; li.appendChild(a); list.appendChild(li); });
+    if (all.length && !onPick) {
       const li = document.createElement("li");
       li.className = "res-all";
       const a = document.createElement("a");
@@ -126,9 +140,15 @@ export function attachSuggest(input, list, { max = 8 } = {}) {
     } else if (e.key === "Enter") {
       e.preventDefault();
       const ls = links();
-      if (active >= 0 && ls[active]) location.href = ls[active].href;
+      if (onPick) { const it = shown[active >= 0 ? active : 0]; if (it) { list.hidden = true; onPick(it); } }
+      else if (active >= 0 && ls[active]) location.href = ls[active].href;
       else if (input.value.trim()) location.href = resultsUrl(input.value);
     } else if (e.key === "Escape") { list.hidden = true; active = -1; }
+  });
+  if (onPick) list.addEventListener("click", e => {
+    const a = e.target.closest("a[data-j]");
+    if (!a) return;
+    e.preventDefault(); list.hidden = true; onPick(shown[+a.dataset.j]);
   });
   document.addEventListener("click", e => { if (!list.contains(e.target) && e.target !== input) list.hidden = true; });
   return { render };

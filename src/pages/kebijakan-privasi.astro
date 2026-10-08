@@ -3,7 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
 // Isi dengan alamat email kontak publik agar bagian "Kontak" muncul.
 const CONTACT_EMAIL = "tahujalanteam@gmail.com";
-const UPDATED = "5 Oktober 2026";
+const UPDATED = "8 Oktober 2026";
 ---
 <BaseLayout
   title="Kebijakan Privasi"
@@ -23,8 +23,8 @@ const UPDATED = "5 Oktober 2026";
     <ul>
       <li><b>Tanpa akun.</b> Tidak ada pendaftaran, formulir, atau kolom komentar.</li>
       <li><b>Tanpa data pribadi.</b> Kami tidak meminta nama, email, atau nomor telepon untuk memakai situs ini.</li>
-      <li><b>Pengaturan lokal saja.</b> Hanya pilihan tema terang/gelap yang disimpan di perangkat Anda. Lokasi untuk fitur Halte Terdekat tidak pernah dikirim atau disimpan.</li>
-      <li><b>Pihak ketiga.</b> Iklan (Google AdSense), peta (Mapbox), dan hosting (Cloudflare) diatur kebijakan masing-masing.</li>
+      <li><b>Pengaturan lokal saja.</b> Hanya pilihan tema terang/gelap yang disimpan di perangkat Anda. Lokasi untuk fitur Halte Terdekat dan Rencanakan Perjalanan tidak pernah dikirim ke kami atau disimpan.</li>
+      <li><b>Pihak ketiga.</b> Iklan (Google AdSense), peta (Mapbox), arah perjalanan (Google Maps, hanya saat tombolnya ditekan), dan hosting (Cloudflare) diatur kebijakan masing-masing.</li>
     </ul>
   </section>
 
@@ -85,7 +85,7 @@ const UPDATED = "5 Oktober 2026";
       </ul>
       </section>
       <section id="lokasi-perangkat" class="doc-section">
-        <h2><span class="doc-num">04</span>Lokasi Perangkat (Fitur Halte Terdekat)</h2>
+        <h2><span class="doc-num">04</span>Lokasi Perangkat (Halte Terdekat &amp; Rencanakan Perjalanan)</h2>
         <p>
           Fitur Halte Terdekat meminta izin lokasi perangkat Anda hanya setelah Anda menekan tombolnya. Lokasi
           diproses sepenuhnya di peramban Anda untuk menghitung jarak ke halte, tidak dikirim ke server kami, dan
@@ -93,12 +93,19 @@ const UPDATED = "5 Oktober 2026";
           memuat koordinat lokasi Anda agar posisi dapat ditandai di peta. Anda dapat menolak atau mencabut izin
           lokasi kapan saja melalui pengaturan peramban.
         </p>
+        <p>
+          Di halaman Rencanakan Perjalanan, izin lokasi hanya diminta bila Anda memilih "Pakai lokasi saya". Lokasi
+          dipakai di peramban Anda untuk mencari halte terdekat dan bus langsung, dan tidak dikirim ke server kami.
+        </p>
       </section>
       <section id="peta-dan-layanan-pihak-ketiga-lainnya" class="doc-section">
         <h2><span class="doc-num">05</span>Peta dan Layanan Pihak Ketiga Lainnya</h2>
       <p>
         Peta jalur rute di halaman rute ditampilkan sebagai gambar dari Mapbox. Saat gambar itu dimuat,
         peramban Anda terhubung ke server Mapbox sehingga Mapbox menerima data teknis seperti alamat IP.
+        Tombol "Buka rute di Google Maps" di halaman Rencanakan Perjalanan membuka Google Maps dengan koordinat
+        titik Dari dan Ke yang Anda pilih; bila titik Dari adalah lokasi Anda, Google Maps membaca lokasi perangkat
+        sendiri sesuai izin yang Anda berikan kepadanya. Data itu baru terkirim ke Google saat Anda menekan tombolnya.
         Situs ini juga dihosting pada infrastruktur Cloudflare. Pemakaian data oleh layanan tersebut diatur
         oleh kebijakan privasi masing-masing penyedia.
       </p>

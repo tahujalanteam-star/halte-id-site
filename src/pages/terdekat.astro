@@ -31,6 +31,10 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
     <div id="map-slot"></div>
     <div id="stop-list" class="grid near-grid"></div>
     <p class="near-note">Jarak dihitung garis lurus dari posisimu. Waktu jalan kaki adalah perkiraan (±80 m per menit).</p>
+    <a href="/perjalanan?dari=lokasi" class="home-trip near-trip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg>
+      <span><b>Mau ke mana dari sini?</b> Rencanakan perjalanan dari lokasimu</span><span aria-hidden="true">&rarr;</span>
+    </a>
     <div id="station-sec"></div>
     <div id="route-sec"></div>
   </section>
