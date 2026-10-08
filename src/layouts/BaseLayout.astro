@@ -90,6 +90,7 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
         --danger: #c8372d; --success: #18885a;
         --pin-main: #2652d9; --pin-muted: #6b7381;
         --acc-orange: #cf5f1a; --acc-green: #18885a; --acc-violet: #6a4bd6; --acc-teal: #10808e; --acc-red: #c8372d;
+        --lm-fill: rgba(248,241,225,.80); --lm-fill-under: rgba(248,241,225,.58); --lm-fill-main: rgba(250,245,232,.90); --lm-line: #6a6256;
         --radius: 22px;
         --shadow: 0 1px 2px rgba(22,30,43,.05), 0 8px 24px -14px rgba(22,30,43,.18);
         --shadow-hover: 0 2px 4px rgba(22,30,43,.06), 0 16px 32px -14px rgba(22,30,43,.26);
@@ -108,6 +109,7 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
         --shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 10px 28px -18px rgba(0,0,0,.8);
         --shadow-hover: inset 0 1px 0 rgba(255,255,255,.07), 0 18px 36px -18px rgba(0,0,0,.9);
         --glow-a: #111c3a; --glow-b: #0e1424; --header-bg: rgba(10,14,21,.82);
+        --lm-fill: color-mix(in srgb, #e6eaf1 32%, transparent); --lm-fill-under: color-mix(in srgb, #e6eaf1 20%, transparent); --lm-fill-main: color-mix(in srgb, #e6eaf1 46%, transparent); --lm-line: color-mix(in srgb, #e6eaf1 88%, transparent);
         color-scheme: dark;
       }
       * { box-sizing: border-box; }
@@ -793,9 +795,10 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       .lm-rail path { fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
       .lm-ring { fill: none; stroke: var(--text-main); stroke-width: 1.6; stroke-dasharray: 1.5 5; stroke-linecap: round; opacity: .55; }
       .lm-ring-t { font-size: 12.5px; font-weight: 700; fill: var(--text-main); stroke: var(--card-bg); stroke-width: 3.5px; paint-order: stroke; }
-      .lm-box { fill: var(--card-bg); stroke: var(--text-main); stroke-width: 1.8; stroke-linejoin: round; }
-      .lm-box.is-under { stroke-dasharray: 3 2; }
-      .lm-box.is-main { fill: color-mix(in srgb, var(--primary) 16%, var(--card-bg)); stroke: var(--primary); stroke-width: 2.4; }
+      .lm-box { fill: var(--lm-fill); stroke: var(--lm-line); stroke-width: 1.5; stroke-linejoin: round; }
+      .lm-box.is-under { fill: var(--lm-fill-under); stroke-dasharray: 1.2 3; stroke-linecap: round; stroke-width: 1.7; }
+      .lm-box.is-main { fill: var(--lm-fill-main); stroke: var(--primary); stroke-width: 2; }
+      .lm-box.is-main.is-under { stroke-width: 2.2; }
       .lm-pin rect, .lm-pin circle { fill: #5d6675; stroke: #fff; stroke-width: 1.8; }
       .lm-pin text { font-size: 11px; font-weight: 800; fill: #fff; text-anchor: middle; }
       .lm-pin.is-main rect, .lm-pin.is-main circle { fill: var(--primary); stroke-width: 2.4; }
@@ -808,7 +811,7 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       .lm-label:hover .lm-name { fill: var(--primary); }
       .lm-legend { gap: .35rem 1rem; }
       .lm-ring-key { width: 14px; height: 14px; border-radius: 50%; border: 1.6px dashed var(--text-sub); flex: none; }
-      .lm-box-key { width: 18px; height: 7px; border: 1.6px solid var(--text-main); background: var(--card-bg); flex: none; }
+      .lm-box-key { width: 18px; height: 8px; border: 1.5px solid var(--lm-line); background: var(--lm-fill); flex: none; }
       /* Kode lin kereta (A, B, C, M, BK, ...) */
       .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
       .lc { display: inline-flex; align-items: center; gap: .32rem; font-weight: 700; color: var(--text-main); white-space: nowrap; vertical-align: middle; }

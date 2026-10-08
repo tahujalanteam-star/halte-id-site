@@ -10,6 +10,14 @@ const RING_PX = 205;         // jari-jari lingkaran 600 m di peta standar
 const SAFE_X = 125;          // di ponsel (skala 0,72) ±125 px kiri-kanan terpotong
 const UNDERGROUND = new Set(["mrt-bundaran-hi", "mrt-dukuh-atas", "mrt-setiabudi", "mrt-bendungan-hilir", "mrt-istora", "mrt-senayan"]);
 // Panjang peron perkiraan (m): rangkaian terpanjang tiap moda
+// Lebar kotak (m). Standar 24 m; stasiun besar dengan banyak jalur dibuat lebih lebar agar terbaca sebagai bangunan.
+// Perkiraan kasar dari jumlah jalur; koreksi bila ada data denah yang lebih tepat.
+const WIDE = {
+  "krl-manggarai": 72,
+  "kai-gambir": 48, "krl-jakarta-kota": 48, "krl-jatinegara": 48, "krl-tanah-abang": 48, "krl-duri": 48,
+  "krl-pasar-senen": 48, "krl-kampung-bandan": 48, "krl-bekasi": 40, "krl-bogor": 40, "krl-cikarang": 40, "krl-depok": 40, "krl-tangerang": 40, "krl-rangkasbitung": 40, "krl-cawang": 40,
+};
+const platformWidth = slug => WIDE[slug] || 24;
 const platformLen = slug => slug.startsWith("krl-") ? 240 : slug.startsWith("mrt-") ? 160 : slug.startsWith("lrt-jabodebek") ? 140 : slug.startsWith("lrt-jakarta") ? 120 : 200;
 
 const world = (lat, lng, z) => {
@@ -106,7 +114,26 @@ export function localityMap({ center, mainStation = null, mainPoint = null, pins
       c = [close.reduce((s, r) => s + r.q[0], 0) / close.length, close.reduce((s, r) => s + r.q[1], 0) / close.length];
       ang = Math.atan2(near[0].dir[1], near[0].dir[0]);
     }
-    const L = platformLen(slug) / mpp, Wd = 24 / mpp, ca = Math.cos(ang), sa = Math.sin(ang);
+    const L = platformLen(slug) / mpp, ca = Math.cos(ang), sa = Math.sin(ang);
+    let Wd = Math.max(platformWidth(slug) / mpp, 10);
+    // Stasiun besar: lebar & posisi melintang disesuaikan agar semua jalur yang lewat (±60 m dari sumbu) tertutup kotak
+    if (WIDE[slug] && own.length) {
+      const reach = 60 / mpp, pad = 14 / mpp + 4;
+      let lo = Infinity, hi = -Infinity;
+      for (const w of own) for (let j = 0; j < w.pts.length - 1; j++) {
+        const a = w.pts[j], b = w.pts[j + 1], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4));
+        for (let t = 0; t <= n; t++) {
+          const x = a[0] + (b[0] - a[0]) * t / n - c[0], y = a[1] + (b[1] - a[1]) * t / n - c[1];
+          const u = x * ca + y * sa, v = -x * sa + y * ca;
+          if (Math.abs(u) <= L / 2 && Math.abs(v) <= reach) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+        }
+      }
+      if (hi >= lo) {
+        const mid = (lo + hi) / 2;
+        Wd = Math.max(Wd, hi - lo + 2 * pad);
+        c = [c[0] - sa * mid, c[1] + ca * mid];
+      }
+    }
     const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [r1(c[0] + ca * u * L / 2 - sa * v * Wd / 2), r1(c[1] + sa * u * L / 2 + ca * v * Wd / 2)]);
     const xs = corners.map(q => q[0]), ys = corners.map(q => q[1]);
     const aabb = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];

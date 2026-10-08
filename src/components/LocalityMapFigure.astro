@@ -29,7 +29,7 @@ const { map: m, alt, mainLabel, gmaps, autoload } = Astro.props;
     <span class="mm-item"><span class="mm-dot"></span>halte (nomor sesuai daftar)</span>
     {m.codes.map(k => <LineCode line={k} name="label" size="sm" />)}
     <span class="mm-item"><span class="lm-ring-key"></span>600 m</span>
-    {m.hasBoxes && <span class="mm-item"><span class="lm-box-key"></span>perkiraan panjang peron</span>}
+    {m.hasBoxes && <span class="mm-item"><span class="lm-box-key"></span>perkiraan stasiun</span>}
     {gmaps && <a href={`https://www.google.com/maps/search/?api=1&query=${gmaps.lat},${gmaps.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>}
   </figcaption>
 </figure>
