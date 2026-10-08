@@ -44,7 +44,7 @@ while (heroColors.length < 4) heroColors.push(["#D90429", "#354992", "#efc94b", 
       <div class="home-search-row">
         <div class="home-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="site-search" type="search" autocomplete="off" placeholder="Rute, halte, stasiun, atau tempat: 1, Blok M…" aria-label="Cari rute atau halte" />
+          <input id="site-search" type="search" enterkeyhint="search" autocomplete="off" placeholder="Rute, halte, stasiun, atau tempat: 1, Blok M…" aria-label="Cari rute atau halte" />
           <ul id="search-results" class="home-results" hidden></ul>
         </div>
         <a href="/terdekat?cari=1" class="locate-btn">
@@ -110,96 +110,7 @@ while (heroColors.length < 4) heroColors.push(["#D90429", "#354992", "#efc94b", 
   </section>
 
   <script>
-    const input = document.getElementById("site-search");
-    const results = document.getElementById("search-results");
-    const norm = s => s.toLowerCase();
-    const key = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-    // Indeks diunduh sekali saat kotak pencarian pertama kali disentuh
-    let data = null, loading = null;
-    const load = () => (loading ||= fetch("/data/search.json").then(r => r.json()).then(d => {
-      data = [
-        ...d.r.map(([id, label, slug, c, on]) => ({ t: "r", id, label, url: `/rute/${slug}`, c, on })),
-        ...d.h.map(([label, id, brt]) => ({ t: "h", label, url: `/halte/${id}`, brt })),
-        ...d.p.map(([label, alias, slug, cat]) => ({ t: "p", label, alias, url: `/tempat/${slug}`, cat })),
-        ...d.s.map(([label, alias, slug, cat, c]) => ({ t: "s", label, alias, url: `/stasiun/${slug}`, cat, c })),
-      ];
-      render();
-    }).catch(() => { loading = null; }));
-    const render = () => {
-      const q = norm(input.value.trim());
-      results.innerHTML = "";
-      if (!q) { results.hidden = true; return; }
-      if (!data) {
-        load();
-        const li = document.createElement("li");
-        li.className = "empty";
-        li.textContent = "Memuat data…";
-        results.appendChild(li);
-        results.hidden = false;
-        return;
-      }
-      const qk = key(q);
-      // Nomor rute yang persis cocok diletakkan paling atas
-      const hits = data
-        .map(it => {
-          const id = it.id ? norm(it.id) : "";
-          const label = norm(it.label);
-          const alias = it.alias ? norm(it.alias) : "";
-          let score = -1;
-          const idk = id ? key(id) : "";
-          if (id && (id === q || (qk && idk === qk))) score = 0;
-          else if (id && (id.startsWith(q) || (qk && idk.startsWith(qk)))) score = 1;
-          else if (label.startsWith(q)) score = 2;
-          else if (label.includes(q) || (alias && alias.includes(q))) score = 3;
-          return { it, score };
-        })
-        .filter(x => x.score >= 0)
-        .sort((a, b) => a.score - b.score)
-        .slice(0, 8);
-      if (!hits.length) {
-        const li = document.createElement("li");
-        li.className = "empty";
-        li.textContent = "Tidak ditemukan. Coba nomor rute atau nama halte lain.";
-        results.appendChild(li);
-      }
-      hits.forEach(({ it }) => {
-        const li = document.createElement("li");
-        const a = document.createElement("a");
-        a.href = it.url;
-        const tag = document.createElement("span");
-        if (it.t === "r") {
-          tag.className = "badge-bus";
-          tag.style.setProperty("--c", it.c);
-          tag.style.setProperty("--on", it.on);
-          tag.textContent = it.id;
-        } else if (it.t === "p") {
-          tag.className = "res-pin is-place";
-          tag.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg>';
-        } else if (it.t === "s") {
-          tag.className = "res-pin is-rail";
-          tag.style.setProperty("--m", it.c);
-          tag.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 11h14"/><path d="m8 21 2-4M16 21l-2-4"/></svg>';
-        } else {
-          tag.className = "res-pin" + (it.brt ? " is-brt" : "");
-          tag.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
-        }
-        const text = document.createElement("span");
-        text.className = "res-text";
-        text.innerHTML = "<b></b><small></small>";
-        text.querySelector("b").textContent = it.label;
-        text.querySelector("small").textContent = it.t === "r" ? "Rute" : it.t === "p" ? `Tempat · ${it.cat} · lihat halte terdekat` : it.t === "s" ? `Stasiun ${it.cat} · lihat halte terdekat` : (it.brt ? "Halte BRT" : "Halte");
-        a.append(tag, text);
-        li.appendChild(a);
-        results.appendChild(li);
-      });
-      results.hidden = false;
-    };
-    input.addEventListener("input", render);
-    input.addEventListener("focus", () => { load(); render(); });
-    input.addEventListener("keydown", e => {
-      if (e.key === "Enter") { const first = results.querySelector("a"); if (first) location.href = first.href; }
-      if (e.key === "Escape") { results.hidden = true; }
-    });
-    document.addEventListener("click", e => { if (!e.target.closest(".home-search")) results.hidden = true; });
+    import { attachSuggest } from "../lib/search-client.js";
+    attachSuggest(document.getElementById("site-search"), document.getElementById("search-results"));
   </script>
 </BaseLayout>

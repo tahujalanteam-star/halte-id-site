@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import NearbyPlaces from "../../components/NearbyPlaces.astro";
 import { routeLabel, placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { stationsForStop, primaryMode, modeInfo, lineInfo, CURATED_MATCH } from "../../lib/rail.js";
 import { routeContext, nearbyStops, placesNearStop, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
@@ -272,19 +273,7 @@ const ldSchema = {
     </>
   )}
 
-  {places.length > 0 && (
-    <section class="home-section">
-      <div class="section-head"><h2>Tempat di Sekitar</h2><span class="count">radius 600 m</span></div>
-      <div class="place-chips">
-        {places.map(pl => (
-          <a href={`/tempat/${pl.slug}`} class="place-chip">
-            <b>{pl.place.name}</b>
-            <span>{placeCategoryLabel(pl.place.category)} · {formatDistance(pl.distance)} · ke {compassDir(me, pl.place)}</span>
-          </a>
-        ))}
-      </div>
-    </section>
-  )}
+  <NearbyPlaces places={places} from={me} />
 
   {group && siblings.length > 0 && (
     <section class="home-section">

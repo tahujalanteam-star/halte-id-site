@@ -1,7 +1,7 @@
 // Stasiun kereta (KRL, MRT, LRT, Whoosh, KAI) dari data/stations.json.
 // Format: { "<slug>": { name, short, modes[], lines[], status: "operasional"|"segera", lat, lng, osm } }
 // Sumber koordinat: OpenStreetMap (ODbL). Jarak ke halte dihitung otomatis saat build.
-import { loadStations, loadStops, loadRailLines, loadRailFares } from "./data.js";
+import { loadStations, loadStops, loadRailLines, loadRailFares, loadRailInterchanges } from "./data.js";
 import { krlDistances, fareBetween, fareNetworksOf } from "./rail-fare-core.js";
 import { distanceM, coordOf, stopsNearPoint } from "./stop-insights.js";
 
@@ -289,4 +289,21 @@ export function railBadgesForStop(stopId) {
     }
   }
   return { badges: out, handled };
+}
+
+// Stasiun lain yang memang bisa dicapai untuk pindah kereta (data/rail-interchanges.json).
+// Sengaja tidak memakai jarak saja: mis. MRT Setiabudi dan LRT Dukuh Atas berdekatan (±630 m) tetapi bukan titik pindah.
+export function interchangesFor(slug) {
+  const all = loadStations(), me = all[slug];
+  if (!me) return [];
+  const out = [];
+  for (const hub of loadRailInterchanges()) {
+    if (!hub.stations?.includes(slug)) continue;
+    for (const other of hub.stations) {
+      const s = all[other];
+      if (other === slug || !s || !isOpen(s) || out.some(x => x.slug === other)) continue;
+      out.push({ ...withAccess(me, { slug: other, ...s }), slug: other, hub: hub.name, note: hub.note || "" });
+    }
+  }
+  return out.sort((a, b) => a.distance - b.distance);
 }

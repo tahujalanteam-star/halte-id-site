@@ -87,6 +87,10 @@ export function loadRailSchedules() {
 export function loadHolidays() {
   return memo("holidays", () => readJSON("holidays.json", { libur_nasional: [], cuti_bersama: [] }));
 }
+// Titik pindah antarstasiun kereta yang ditulis manual (beda moda/lin). Opsional.
+export function loadRailInterchanges() {
+  return memo("rail-interchanges", () => readJSON("rail-interchanges.json", { hubs: [] }).hubs || []);
+}
 export function loadRailFares() {
   return memo("rail-fares", () => readJSON("rail-fares.json", {}));
 }
@@ -95,6 +99,7 @@ export const PLACE_CATEGORIES = {
   "mal": "Pusat perbelanjaan",
   "rumah-sakit": "Rumah sakit",
   "kampus": "Kampus",
+  "sekolah": "Sekolah",
   "stasiun": "Stasiun",
   "terminal": "Terminal",
   "wisata": "Wisata & olahraga",
@@ -102,8 +107,16 @@ export const PLACE_CATEGORIES = {
   "ibadah": "Tempat ibadah",
   "hotel": "Hotel",
   "pasar": "Pasar",
+  "apartemen": "Apartemen & rusun",
 };
 export const placeCategoryLabel = c => PLACE_CATEGORIES[c] || "Tempat";
+// Jenis rinci (field "subtype", dari scripts/apply-places-candidates.py), mis. "SD negeri" → "SD Negeri"
+const KIND = { "internasional": "Sekolah internasional", "apartemen": "Apartemen", "rumah susun": "Rumah susun", "gedung perkantoran": "Gedung perkantoran", "instansi pemerintah": "Instansi pemerintah", "perguruan tinggi": "Perguruan tinggi" };
+export const placeKindLabel = p => !p.subtype ? placeCategoryLabel(p.category)
+  : KIND[p.subtype] || p.subtype.replace(/\b(negeri|swasta)\b/, w => w[0].toUpperCase() + w.slice(1)); // "SD negeri" → "SD Negeri"
+// Tampil di halaman Tujuan Populer (/tempat)? Field "populer": true/false menimpa aturan bawaan:
+// tempat kurasi manual tampil, tempat hasil impor OpenStreetMap ("source": "osm") tidak (tetap bisa dicari).
+export const isPopularPlace = p => p.populer ?? p.source !== "osm";
 
 // Koreksi manual kelompok kawasan (opsional), lihat src/lib/stop-insights.js
 export function loadStopGroupOverrides() {

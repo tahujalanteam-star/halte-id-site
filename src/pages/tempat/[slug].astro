@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, loadPlaces, placeCategoryLabel } from "../../lib/data.js";
+import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, loadPlaces, placeCategoryLabel, placeKindLabel } from "../../lib/data.js";
 import { stopsNearPoint, coordOf, distanceM, formatDistance, compassDir, staticStopMap } from "../../lib/stop-insights.js";
 
 export async function getStaticPaths() {
@@ -12,7 +12,8 @@ const place = loadPlaces()[slug];
 const stops = loadStops();
 const stopServices = loadStopServices();
 const routeLookup = buildRouteLookup(loadRoutesIndex());
-const catLabel = placeCategoryLabel(place.category);
+const catLabel = placeKindLabel(place);
+const schemaType = { sekolah: "School", kampus: "CollegeOrUniversity", "rumah-sakit": "Hospital", mal: "ShoppingCenter" }[place.category] || "Place";
 const pt = { lat: place.lat, lng: place.lng };
 
 // Halte dalam 600 m; bila tidak ada, ambil 3 terdekat dalam 2 km
@@ -47,7 +48,7 @@ const intro = first
   description={`Halte Transjakarta terdekat dari ${place.name}${first ? `: ${first.stop.name} (${formatDistance(first.distance)})` : ""}. Lihat ${routeMap.size} rute yang bisa dinaiki, jarak, dan arah jalan kaki.`}
   canonicalPath={`/tempat/${slug}`}
   crumbs={[{ name: "Tempat & Gedung", path: "/tempat" }, { name: place.name }]}
-  schema={{ "@type": "Place", name: place.name, geo: { "@type": "GeoCoordinates", latitude: place.lat, longitude: place.lng } }}
+  schema={{ "@type": schemaType, name: place.name, geo: { "@type": "GeoCoordinates", latitude: place.lat, longitude: place.lng } }}
 >
   <div class="crumb"><a href="/tempat">Tempat</a> / <span>{place.name}</span></div>
   <header class="page-hero is-brt">

@@ -1,0 +1,25 @@
+---
+// Daftar "Tempat di Sekitar" untuk halaman halte & stasiun.
+// places: hasil placesNearPoint (populer di depan); from: titik asal untuk arah mata angin.
+import { placeKindLabel } from "../lib/data.js";
+import { formatDistance, compassDir } from "../lib/stop-insights.js";
+const { places = [], from, show = 10 } = Astro.props;
+const head = places.slice(0, show), rest = places.slice(show);
+const chip = pl => ({ href: `/tempat/${pl.slug}`, name: pl.place.name, meta: `${placeKindLabel(pl.place)} · ${formatDistance(pl.distance)} · ke ${compassDir(from, pl.place)}` });
+---
+{places.length > 0 && (
+  <section class="home-section">
+    <div class="section-head"><h2>Tempat di Sekitar</h2><span class="count">{places.length} tempat · radius 600 m</span></div>
+    <div class="place-chips">
+      {head.map(pl => { const c = chip(pl); return <a href={c.href} class="place-chip"><b>{c.name}</b><span>{c.meta}</span></a>; })}
+    </div>
+    {rest.length > 0 && (
+      <details class="more-places">
+        <summary>Lihat {rest.length} tempat lain</summary>
+        <div class="place-chips">
+          {rest.map(pl => { const c = chip(pl); return <a href={c.href} class="place-chip"><b>{c.name}</b><span>{c.meta}</span></a>; })}
+        </div>
+      </details>
+    )}
+  </section>
+)}

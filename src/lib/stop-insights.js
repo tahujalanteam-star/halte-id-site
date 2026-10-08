@@ -11,7 +11,7 @@
 //   "names":   { "terminal-kampung-melayu": "Terminal Kampung Melayu" }  // ganti nama kawasan (kunci = slug)
 // }
 import {
-  loadStops, loadRoutesIndex, loadRoute, loadStopCoords, loadStopGroupOverrides, loadPlaces, slugify,
+  loadStops, loadRoutesIndex, loadRoute, loadStopCoords, loadStopGroupOverrides, loadPlaces, isPopularPlace, slugify,
 } from "./data.js";
 
 export const GROUP_RADIUS_M = 250;
@@ -92,17 +92,19 @@ export function nearbyStops(stopId, { radius = NEARBY_RADIUS_M, limit = 8, exclu
   return stopsNearPoint(coordOf(stopId), { radius, limit, exclude: [stopId, ...exclude] });
 }
 
-// Tempat penting di sekitar sebuah halte: [{ slug, place, distance }]
-export function placesNearStop(stopId, { radius = 600, limit = 8 } = {}) {
-  const me = coordOf(stopId);
-  if (!me) return [];
+// Tempat di sekitar sebuah titik: [{ slug, place, distance }]. Tempat populer (lihat isPopularPlace) di depan,
+// sisanya urut jarak. Tanpa batas jumlah: halaman menampilkan sebagian dan menyembunyikan sisanya di <details>,
+// sehingga setiap tempat tetap tertaut dari halte terdekatnya.
+export function placesNearPoint(pt, { radius = 600, limit = Infinity } = {}) {
+  if (!pt) return [];
   return Object.entries(loadPlaces())
-    .filter(([, p]) => Number.isFinite(p.lat) && Math.abs(p.lat - me.lat) < 0.01 && Math.abs(p.lng - me.lng) < 0.01)
-    .map(([slug, place]) => ({ slug, place, distance: distanceM(me, place) }))
+    .filter(([, p]) => Number.isFinite(p.lat) && Math.abs(p.lat - pt.lat) < 0.01 && Math.abs(p.lng - pt.lng) < 0.01)
+    .map(([slug, place]) => ({ slug, place, distance: distanceM(pt, place), pop: isPopularPlace(place) }))
     .filter(x => x.distance <= radius)
-    .sort((a, b) => a.distance - b.distance)
+    .sort((a, b) => (b.pop - a.pop) || (a.distance - b.distance))
     .slice(0, limit);
 }
+export const placesNearStop = (stopId, opts) => placesNearPoint(coordOf(stopId), opts);
 
 // Nama dasar untuk pengelompokan: "Term. Kampung Melayu 4" -> "kampung melayu"
 export function baseName(name) {

@@ -7,5 +7,5 @@ const SITE_URL = process.env.SITE_URL || "https://halte.id";
 
 export default defineConfig({
   site: SITE_URL,
-  integrations: [sitemap()],
+  integrations: [sitemap({ filter: page => !/\/cari\/?$/.test(page) })], // halaman hasil pencarian tidak diindeks
 });

@@ -1,24 +1,35 @@
 ---
+// Tujuan Populer: hanya tempat populer (lihat isPopularPlace di src/lib/data.js).
+// Tempat lain (sekolah, kantor, apartemen hasil impor OSM) tetap punya halaman dan bisa dicari.
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { loadPlaces, PLACE_CATEGORIES } from "../../lib/data.js";
+import { loadPlaces, PLACE_CATEGORIES, isPopularPlace } from "../../lib/data.js";
 
-const places = Object.entries(loadPlaces());
+const allPlaces = Object.entries(loadPlaces());
+const places = allPlaces.filter(([, p]) => isPopularPlace(p));
+const hiddenCount = allPlaces.length - places.length;
 const groups = Object.entries(PLACE_CATEGORIES)
   .map(([key, label]) => ({ key, label, items: places.filter(([, p]) => p.category === key).sort((a, b) => a[1].name.localeCompare(b[1].name, "id")) }))
   .filter(g => g.items.length);
 const other = places.filter(([, p]) => !PLACE_CATEGORIES[p.category]);
 if (other.length) groups.push({ key: "lainnya", label: "Lainnya", items: other });
+const fmt = n => n.toLocaleString("id-ID");
 ---
 <BaseLayout
   title="Naik Transjakarta ke Tempat Populer di Jakarta"
-  description="Cari halte dan rute Transjakarta terdekat ke mal, rumah sakit, kampus, perkantoran, dan tempat wisata di Jakarta."
+  description="Cari halte dan rute Transjakarta terdekat ke mal, rumah sakit, kampus, sekolah, perkantoran, apartemen, dan tempat wisata di Jakarta."
   canonicalPath="/tempat"
   crumbs={[{ name: "Tempat & Gedung" }]}
 >
   <header class="page-head">
     <p class="page-kicker">Tujuan populer</p>
     <h1>Tempat &amp; Gedung</h1>
-    <p class="lead">{places.length} tempat di Jakarta dan sekitarnya, lengkap dengan halte Transjakarta terdekat dan rute yang bisa dinaiki.</p>
+    <p class="lead">{places.length} tujuan populer di Jakarta dan sekitarnya, lengkap dengan halte Transjakarta terdekat dan rute yang bisa dinaiki.{" "}
+      {hiddenCount > 0 && <>Ada juga {fmt(hiddenCount)} sekolah, kantor, apartemen, dan tempat lain yang bisa dicari.</>}</p>
+    <form class="home-search sr-form" action="/cari" method="get" role="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="place-search" name="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cari sekolah, kampus, kantor, apartemen…" aria-label="Cari tempat" />
+      <ul id="place-suggest" class="home-results" hidden></ul>
+    </form>
     <div class="filter-chips" role="navigation" aria-label="Kategori tempat">
       {groups.map(g => <a class="chip" href={`#${g.key}`} aria-pressed="false">{g.label} <span>{g.items.length}</span></a>)}
     </div>
@@ -33,4 +44,8 @@ if (other.length) groups.push({ key: "lainnya", label: "Lainnya", items: other }
       </div>
     </section>
   ))}
+  <script>
+    import { attachSuggest } from "../../lib/search-client.js";
+    attachSuggest(document.getElementById("place-search"), document.getElementById("place-suggest"));
+  </script>
 </BaseLayout>

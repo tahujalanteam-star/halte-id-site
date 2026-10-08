@@ -1,0 +1,102 @@
+---
+// Halaman hasil pencarian. Statis: kata kunci dibaca dari ?q= lalu dicocokkan di browser dengan /data/search.json.
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout
+  title="Hasil Pencarian"
+  description="Cari rute bus, halte, stasiun kereta, dan tempat di Jakarta dan sekitarnya."
+  canonicalPath="/cari"
+  noindex={true}
+  crumbs={[{ name: "Cari" }]}
+>
+  <header class="page-head search-head">
+    <p class="page-kicker">Pencarian</p>
+    <h1 id="sr-title">Cari rute, halte, stasiun, atau tempat</h1>
+    <form class="home-search sr-form" action="/cari" method="get" role="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="sr-input" name="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Mis. Blok M, SMA Negeri 8, Kuningan…" aria-label="Kata kunci" />
+      <ul id="sr-suggest" class="home-results" hidden></ul>
+    </form>
+    <div id="sr-tabs" class="filter-chips sr-tabs" role="tablist" aria-label="Jenis hasil" hidden></div>
+  </header>
+
+  <p id="sr-status" class="sr-status" aria-live="polite"></p>
+  <div id="sr-groups"></div>
+
+  <section id="sr-empty" class="sr-empty" hidden>
+    <h2>Belum ketemu</h2>
+    <ul>
+      <li>Periksa ejaan, atau coba sebagian nama saja (mis. <i>Kuningan</i>, bukan <i>Halte Kuningan Barat Arah Selatan</i>).</li>
+      <li>Rute bisa dicari dengan nomornya, mis. <i>1</i>, <i>9H</i>, <i>JAK 10</i>.</li>
+      <li>Sekolah bisa disingkat: <i>SDN</i>, <i>SMPN</i>, <i>SMAN</i>, <i>SMKN</i>.</li>
+    </ul>
+    <p>Tempat yang dicari mungkin belum ada di halte.id. <a id="sr-gmaps" href="https://www.google.com/maps" target="_blank" rel="noopener nofollow">Cari di Google Maps &rarr;</a></p>
+  </section>
+
+  <script>
+    import { loadIndex, search, resultLink, attachSuggest, TYPES } from "../lib/search-client.js";
+    const $ = id => document.getElementById(id);
+    const input = $("sr-input");
+    const ORDER = ["r", "s", "h", "p"];
+    const SHOW = { r: 12, s: 6, h: 8, p: 10 };
+    const q = (new URLSearchParams(location.search).get("q") || "").trim();
+    input.value = q;
+    attachSuggest(input, $("sr-suggest"));
+    let tab = "all";
+
+    function draw(all) {
+      const groups = ORDER.map(t => ({ t, items: all.filter(it => it.t === t) })).filter(g => g.items.length);
+      // Tab jenis hasil
+      const tabs = $("sr-tabs");
+      tabs.innerHTML = "";
+      tabs.hidden = groups.length < 2;
+      [{ t: "all", label: "Semua", n: all.length }, ...groups.map(g => ({ t: g.t, label: TYPES[g.t].label, n: g.items.length }))].forEach(x => {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "chip"; b.setAttribute("role", "tab");
+        b.setAttribute("aria-pressed", String(tab === x.t)); b.setAttribute("aria-selected", String(tab === x.t));
+        b.innerHTML = `${x.label} <span>${x.n}</span>`;
+        b.onclick = () => { tab = x.t; draw(all); };
+        tabs.appendChild(b);
+      });
+      // Kelompok hasil
+      const box = $("sr-groups");
+      box.innerHTML = "";
+      for (const g of groups) {
+        if (tab !== "all" && tab !== g.t) continue;
+        const sec = document.createElement("section");
+        sec.className = "home-section sr-group";
+        sec.innerHTML = `<div class="section-head"><h2></h2><span class="count"></span></div><ul class="sr-list"></ul>`;
+        sec.querySelector("h2").textContent = TYPES[g.t].label;
+        sec.querySelector(".count").textContent = `${g.items.length} hasil`;
+        const ul = sec.querySelector("ul");
+        const limit = tab === "all" ? SHOW[g.t] : Infinity;
+        const add = items => items.forEach(it => { const li = document.createElement("li"); li.appendChild(resultLink(it)); ul.appendChild(li); });
+        add(g.items.slice(0, limit));
+        if (g.items.length > limit) {
+          const more = document.createElement("button");
+          more.type = "button"; more.className = "sr-more";
+          more.textContent = `Lihat semua ${g.items.length} ${TYPES[g.t].label.toLowerCase()}`;
+          more.onclick = () => { tab = g.t; draw(all); window.scrollTo({ top: 0, behavior: "smooth" }); };
+          sec.appendChild(more);
+        }
+        box.appendChild(sec);
+      }
+    }
+
+    if (!q) {
+      $("sr-status").textContent = "Ketik nomor rute, nama halte, stasiun, sekolah, kampus, kantor, atau apartemen.";
+      input.focus();
+    } else {
+      document.title = `“${q}”: Hasil Pencarian | halte.id`;
+      $("sr-title").textContent = `Hasil untuk “${q}”`;
+      $("sr-status").textContent = "Mencari…";
+      loadIndex().then(() => {
+        const all = search(q);
+        $("sr-status").textContent = all.length ? `${all.length} hasil` : `Tidak ada hasil untuk “${q}”.`;
+        $("sr-gmaps").href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q + " Jakarta")}`;
+        $("sr-empty").hidden = all.length > 0;
+        draw(all);
+      }, () => { $("sr-status").textContent = "Gagal memuat data pencarian. Periksa koneksi lalu muat ulang halaman."; });
+    }
+  </script>
+</BaseLayout>

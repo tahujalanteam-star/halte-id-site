@@ -2,7 +2,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { badgeVars, loadStations, loadStops, loadStopServices, loadRoutesIndex, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { formatDistance } from "../../lib/stop-insights.js";
-import { railLines, RAIL_MODES, RAIL_LINES, LINE_BADGE, lineInfo, railFare, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, isOpen } from "../../lib/rail.js";
+import { railLines, RAIL_MODES, RAIL_LINES, LINE_BADGE, lineInfo, interchangesFor, railFare, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, isOpen } from "../../lib/rail.js";
 import { rupiah } from "../../lib/rail-fare-core.js";
 import { octiPath } from "../../lib/octi.js";
 
@@ -26,16 +26,17 @@ const info = new Map();
 function stationInfo(slug) {
   if (info.has(slug)) return info.get(slug);
   const st = stations[slug];
-  // Pindah lin: lin lain di stasiun ini + lin di stasiun moda lain di dekatnya (mis. MRT Dukuh Atas → KRL Sudirman/BNI City, LRT Dukuh Atas).
+  // Pindah lin: lin lain di stasiun ini + lin di stasiun yang tercatat sebagai titik pindah (data/rail-interchanges.json).
   // Ditampilkan sebagai lin (menuju /kereta/<lin>), bukan nama stasiun.
   const otherLines = [], seen = new Set([line.key]);
   for (const l of st.lines || []) if (!seen.has(l) && RAIL_LINES[l]) { seen.add(l); otherLines.push({ key: l, label: LINE_BADGE[l] || lineInfo(l).short, color: lineInfo(l).color, title: lineInfo(l).label }); }
-  let kai = null;
-  for (const s of stationsNearPoint(st, { radius: 650, limit: 6, exclude: [slug] })) {
-    const ls = (s.lines || []).filter(l => RAIL_LINES[l]);
-    if (!ls.length && (s.modes || []).includes("kai")) kai ||= `Kereta antarkota · ${s.name}, ±${formatDistance(s.distance)}`;
-    for (const l of ls) if (!seen.has(l)) { seen.add(l); otherLines.push({ key: l, label: LINE_BADGE[l] || lineInfo(l).short, color: lineInfo(l).color, title: `${lineInfo(l).label} · ${s.name}, ±${formatDistance(s.distance)} jalan kaki` }); }
+  for (const s of interchangesFor(slug)) {
+    for (const l of (s.lines || []).filter(l => RAIL_LINES[l])) if (!seen.has(l)) { seen.add(l); otherLines.push({ key: l, label: LINE_BADGE[l] || lineInfo(l).short, color: lineInfo(l).color, title: `${lineInfo(l).label} · ${s.name}, ±${formatDistance(s.distance)} jalan kaki` }); }
   }
+  // Kereta antarkota di dekat stasiun (Gambir, Pasar Senen): penanda tanpa tautan
+  let kai = null;
+  for (const s of stationsNearPoint(st, { radius: 450, limit: 4, exclude: [slug] }))
+    if (!(s.lines || []).some(l => RAIL_LINES[l]) && (s.modes || []).includes("kai")) kai ||= `Kereta antarkota · ${s.name}, ±${formatDistance(s.distance)}`;
   const nearby = [];
   const { near, farOnly } = stopsNearStation({ ...st, slug });
   const routeIds = new Set();

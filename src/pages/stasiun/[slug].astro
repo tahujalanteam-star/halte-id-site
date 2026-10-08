@@ -1,8 +1,9 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import NearbyPlaces from "../../components/NearbyPlaces.astro";
 import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, placeCategoryLabel, loadPlaces } from "../../lib/data.js";
-import { coordOf, distanceM, formatDistance, compassDir, staticStopMap } from "../../lib/stop-insights.js";
-import { stationList, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, lineInfo, RAIL_MODES, neighborsOnLines, stationShort, fareTableFrom } from "../../lib/rail.js";
+import { coordOf, distanceM, formatDistance, compassDir, staticStopMap, placesNearPoint } from "../../lib/stop-insights.js";
+import { stationList, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, lineInfo, RAIL_MODES, neighborsOnLines, stationShort, fareTableFrom, interchangesFor } from "../../lib/rail.js";
 import { rupiah } from "../../lib/rail-fare-core.js";
 import { stationSchedule, fmtMin } from "../../lib/schedule.js";
 
@@ -31,7 +32,8 @@ for (const it of items) for (const r of it.routes) if (!routeMap.has(r.id)) rout
 const cats = groupByCategory([...routeMap.values()]);
 
 // Stasiun lain untuk pindah moda/lin (mis. Dukuh Atas: KRL Sudirman, BNI City, MRT, LRT)
-const interchange = stationsNearPoint(pt, { radius: 450, limit: 5, exclude: [st.slug] }).map(s => ({ ...s, mode: modeInfo(primaryMode(s)) }));
+const interchange = interchangesFor(st.slug).map(s => ({ ...s, mode: modeInfo(primaryMode(s)) }));
+const interchangeNote = interchange[0]?.note || "";
 
 // Stasiun sebelum/sesudah per lin, format sama dengan urutan halte di halaman halte
 const fmtKm = km => km.toLocaleString("id-ID", { maximumFractionDigits: 1 });
@@ -88,12 +90,7 @@ const timetable = (sched?.dirs || []).map(d => {
 const fmtDate = iso => new Date(iso + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 const schedSource = sched ? `Jadwal resmi ${sched.sourceName} (${sched.dateKind === "berlaku" ? "berlaku sejak" : "diambil"} ${fmtDate(sched.date)})` : "";
 
-const places = Object.entries(loadPlaces())
-  .filter(([, p]) => Number.isFinite(p.lat) && Math.abs(p.lat - pt.lat) < 0.01 && Math.abs(p.lng - pt.lng) < 0.01)
-  .map(([slug, place]) => ({ slug, place, distance: distanceM(pt, place) }))
-  .filter(x => x.distance <= 600)
-  .sort((a, b) => a.distance - b.distance)
-  .slice(0, 8);
+const places = placesNearPoint(pt);
 
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 const mapUrl = staticStopMap({
@@ -109,7 +106,7 @@ const intro = [
   first
     ? `Halte Transjakarta terdekat adalah ${first.stop.name}, sekitar ${formatDistance(first.distance)} (±${first.walk} menit jalan kaki)${brtNear.length && brtNear[0] !== first ? `, sedangkan halte BRT terdekat adalah ${brtNear[0].stop.name} (${formatDistance(brtNear[0].distance)})` : ""}. Total ${routeMap.size} rute Transjakarta bisa dinaiki dari halte di sekitar stasiun.`
     : `Belum ada halte Transjakarta dalam radius 1,5 km dari stasiun ini di data kami.`,
-  interchange.length ? `Di dekatnya juga ada ${interchange.map(s => s.name).join(", ")}.` : "",
+  interchange.length ? `Dari sini bisa pindah ke ${interchange.map(s => s.name).join(", ")}.` : "",
 ].filter(Boolean).join(" ");
 ---
 <BaseLayout
@@ -424,14 +421,15 @@ const intro = [
 
   {interchange.length > 0 && (
     <section class="home-section">
-      <div class="section-head"><h2>Stasiun Lain di Dekatnya</h2><span class="count">radius 450 m</span></div>
+      <div class="section-head"><h2>Pindah ke Kereta Lain</h2><span class="count">{interchange[0].hub}</span></div>
+      {interchangeNote && <p class="fare-lead">{interchangeNote}</p>}
       <div class="rail-list">
         {interchange.map(s => (
           <a href={`/stasiun/${s.slug}`} class="rail-item" style={`--m:${s.mode.color}`}>
             <span class="rail-badge">{s.mode.short}</span>
             <span class="rail-main">
               <b>{s.name}</b>
-              <span class="rail-meta">±{formatDistance(s.distance)} · ke {compassDir(pt, s)}</span>
+              <span class="rail-meta">±{formatDistance(s.distance)} jalan kaki · ke {compassDir(pt, s)}{s.entrance && ` · pintu ${s.entrance}`}</span>
               <span class="rail-lines">{(s.lines || []).map(l => <i style={`--l:${lineInfo(l).color}`}>{lineInfo(l).short}</i>)}</span>
             </span>
             <svg class="rail-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
@@ -441,17 +439,5 @@ const intro = [
     </section>
   )}
 
-  {places.length > 0 && (
-    <section class="home-section">
-      <div class="section-head"><h2>Tempat di Sekitar</h2><span class="count">radius 600 m</span></div>
-      <div class="place-chips">
-        {places.map(pl => (
-          <a href={`/tempat/${pl.slug}`} class="place-chip">
-            <b>{pl.place.name}</b>
-            <span>{placeCategoryLabel(pl.place.category)} · {formatDistance(pl.distance)} · ke {compassDir(pt, pl.place)}</span>
-          </a>
-        ))}
-      </div>
-    </section>
-  )}
+  <NearbyPlaces places={places} from={pt} />
 </BaseLayout>
