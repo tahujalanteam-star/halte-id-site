@@ -1,4 +1,6 @@
 ---
+import LineCode from "../../components/LineCode.astro";
+import ShareButton from "../../components/ShareButton.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { routeMapUrl } from "../../lib/map-utils.js";
 import { octiPath } from "../../lib/octi.js";
@@ -64,7 +66,7 @@ function transferBadges(stop, stopId) {
   };
   // Transfer kereta: lencana per lin kereta (warna lin, menuju /kereta/<lin>) bila stasiunnya ditemukan
   const rail = railBadgesForStop(stopId);
-  const railBadges = rail.badges.map(b => ({ line: b.text, type: "rail", non: false, href: b.href, color: b.color, title: b.title }));
+  const railBadges = rail.badges.map(b => ({ line: b.text, type: "rail", non: false, href: b.href, color: b.color, title: b.title, key: b.key }));
   const primary = [...list.filter(t => !isNon(t) && !rail.handled.has(t.type)).map(decorate), ...railBadges];
   const non = list.filter(isNon).sort((a, b) => {
     const ja = String(a.line).toUpperCase().startsWith("JAK") || a.type === "jak";
@@ -139,6 +141,7 @@ const ldSchema = {
       {summary.stops_count && <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>{summary.stops_count} halte</li>}
     </ul>
   </header>
+  <div class="trip-cta page-share"><ShareButton /></div>
 
   {directions.map((dir, dirIndex) => {
     const mapUrl = staticMapUrl(dir.id, dirIndex);
@@ -166,7 +169,7 @@ const ldSchema = {
                 <div class="transfers-wrapper">
                   {[...tb.primary, ...tb.visible].map(t => (
                     t.href
-                      ? <a href={t.href} title={t.title} class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`} style={t.color ? `background-color:${t.color};color:${readableText(t.color)};` : undefined}>{t.line}</a>
+                      ? (t.key ? <LineCode line={t.key} size="sm" href={t.href} title={t.title} class="transfer-lc" /> : <a href={t.href} title={t.title} class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`} style={t.color ? `background-color:${t.color};color:${readableText(t.color)};` : undefined}>{t.line}</a>)
                       : <span title={t.title} class={`transfer-badge transfer-${t.type}${t.non ? " is-non-brt" : ""}`} style={t.color ? `background-color:${t.color};color:${readableText(t.color)};` : undefined}>{t.line}</span>
                   ))}
                   {tb.hidden.length > 0 && (

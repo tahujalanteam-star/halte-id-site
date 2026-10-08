@@ -1,0 +1,35 @@
+---
+// Isi peta locality (gambar + SVG + legenda). Dipakai LocalityMap.astro.
+import LineCode from "./LineCode.astro";
+const { map: m, alt, mainLabel, gmaps, autoload } = Astro.props;
+---
+<figure class={`mini-map lm${autoload ? " is-open" : ""}`}>
+  <div class="lm-frame"><div class="lm-stage">
+    <img data-src={m.url} data-src-dark={m.urlDark} data-autoload={autoload ? "" : undefined} alt={alt} width={m.W} height={m.H} loading="lazy" />
+    <svg class="lm-svg" viewBox={`0 0 ${m.W} ${m.H}`} role="group" aria-label={alt}>
+      <g class="lm-rail">{m.lines.map(l => <path d={l.d} stroke={l.color} />)}</g>
+      <circle class="lm-ring" cx={m.ring.cx} cy={m.ring.cy} r={m.ring.r} />
+      <text class="lm-ring-t" x={m.ringLabel.x} y={m.ringLabel.y} text-anchor="middle">±8 menit jalan kaki</text>
+      {m.boxes.map(b => <a href={`/stasiun/${b.slug}`}><title>{b.name}</title><polygon class={`lm-box${b.main ? " is-main" : ""}${b.under ? " is-under" : ""}`} points={b.points} /></a>)}
+      {m.pins.map(p => p.main
+        ? (p.t ? <g class="lm-pin is-main"><rect x={p.x - p.w / 2 - 3} y={p.y - 11} width={p.w + 6} height="22" rx="11" /><text x={p.x} y={Math.round((p.y + 4.5) * 10) / 10}>{p.t}</text></g>
+               : <g class="lm-pin is-main"><circle cx={p.x} cy={p.y} r="10" /><circle class="dot" cx={p.x} cy={p.y} r="3.4" /></g>)
+        : <a href={p.href}><title>{p.title}</title><g class="lm-pin"><rect x={p.x - p.w / 2} y={p.y - 10} width={p.w} height="20" rx="10" /><text x={p.x} y={Math.round((p.y + 4.3) * 10) / 10}>{p.t}</text></g></a>)}
+      {m.labels.map(l => {
+        let bx = l.x; const cy = Math.round((l.y + 12) * 10) / 10;
+        return <a href={`/stasiun/${l.slug}`} class={`lm-label${l.main ? " is-main" : ""}`}><title>{l.full}</title>
+          {l.badges.map(b => { const w = b.code.length === 1 ? 22 : 28; const x = bx; bx += w + 3; return <g class="lm-code"><rect x={x} y={cy - 11} width={w} height="22" rx="11" stroke={b.color} /><text x={Math.round((x + w / 2) * 10) / 10} y={Math.round((cy + 4.2) * 10) / 10} fill={b.color}>{b.code}</text></g>; })}
+          <text class="lm-name" x={Math.round((bx + 3) * 10) / 10} y={Math.round((cy + 5) * 10) / 10}>{l.name}</text>
+        </a>;
+      })}
+    </svg>
+  </div></div>
+  <figcaption class="lm-legend">
+    {mainLabel && <span class="mm-item"><span class="mm-dot is-main"></span>{mainLabel}</span>}
+    <span class="mm-item"><span class="mm-dot"></span>halte (nomor sesuai daftar)</span>
+    {m.codes.map(k => <LineCode line={k} name="label" size="sm" />)}
+    <span class="mm-item"><span class="lm-ring-key"></span>600 m</span>
+    {m.hasBoxes && <span class="mm-item"><span class="lm-box-key"></span>perkiraan panjang peron</span>}
+    {gmaps && <a href={`https://www.google.com/maps/search/?api=1&query=${gmaps.lat},${gmaps.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>}
+  </figcaption>
+</figure>

@@ -1,0 +1,32 @@
+---
+// Peta locality: gambar Mapbox + lapisan SVG (rel, lingkaran jalan kaki, kotak peron, halte bernomor, label kode lin).
+// Props: map (hasil localityMap), alt, mainLabel (keterangan titik utama di legenda), gmaps ({lat,lng}),
+//        toggle (bungkus dalam <details> yang tertutup; gambar baru dimuat saat dibuka), summary (teks tombol).
+import LocalityMapFigure from "./LocalityMapFigure.astro";
+const { map, alt = "Peta sekitar", mainLabel = "", gmaps = null, toggle = false, summary = "" } = Astro.props;
+const m = map;
+---
+{m && (toggle ? (
+  <details class="map-toggle lm-toggle">
+    <summary>
+      <span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
+      <span class="mt-text"><b>Tampilkan peta</b><span>{summary}</span></span>
+      <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </summary>
+    <LocalityMapFigure map={m} alt={alt} mainLabel={mainLabel} gmaps={gmaps} autoload={false} />
+  </details>
+) : (
+  <LocalityMapFigure map={m} alt={alt} mainLabel={mainLabel} gmaps={gmaps} autoload={true} />
+))}
+
+<script>
+  // Skala peta: lebar kontainer / 760, minimal 0,72 (di ponsel tepi kiri-kanan terpotong, tulisan tetap terbaca)
+  const fit = (fr: HTMLElement) => { const w = fr.clientWidth; if (w) fr.style.setProperty("--s", String(Math.max(0.72, w / 760))); };
+  const ro = new ResizeObserver(es => es.forEach(e => fit(e.target as HTMLElement)));
+  document.querySelectorAll<HTMLElement>(".lm-frame").forEach(fr => { fit(fr); ro.observe(fr); });
+  // Peta yang dibungkus tombol: gambar baru diminta ke Mapbox saat dibuka (hemat kuota)
+  document.querySelectorAll<HTMLDetailsElement>("details.lm-toggle").forEach(d => d.addEventListener("toggle", () => {
+    const img = d.querySelector<HTMLImageElement>("img[data-src]");
+    if (d.open && img && !img.src) img.src = (window as any).mapSrcFor ? (window as any).mapSrcFor(img) : img.dataset.src!;
+  }));
+</script>

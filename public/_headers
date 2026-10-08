@@ -1,0 +1,15 @@
+# Aturan cache Cloudflare Pages (https://developers.cloudflare.com/pages/configuration/headers/)
+# File di /_astro/ dan /fonts/ bernama tetap per isi (hash) atau jarang berubah: simpan lama di browser.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Data JSON untuk pencarian, jadwal, peta: berubah tiap build data, cukup 1 jam.
+/data/*
+  Cache-Control: public, max-age=3600
+
+# Gambar pratinjau tautan
+/og/*
+  Cache-Control: public, max-age=86400

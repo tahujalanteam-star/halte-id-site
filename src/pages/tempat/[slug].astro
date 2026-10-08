@@ -1,4 +1,6 @@
 ---
+import LocalityMap from "../../components/LocalityMap.astro";
+import { localityMap } from "../../lib/locality-map.js";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import TripButtons from "../../components/TripButtons.astro";
 import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, loadPlaces, placeCategoryLabel, placeKindLabel } from "../../lib/data.js";
@@ -34,11 +36,8 @@ for (const it of items) for (const r of it.routes) if (!routeMap.has(r.id)) rout
 const cats = groupByCategory([...routeMap.values()]);
 
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
-const mapUrl = staticStopMap({
-  main: [pt],
-  others: items.map(it => ({ ...coordOf(it.id), label: it.num })),
-  token: TOKEN,
-});
+const lmap = localityMap({ center: pt, mainPoint: pt, token: TOKEN,
+  pins: items.map(it => ({ ...coordOf(it.id), num: it.num, href: `/halte/${it.id}`, name: it.stop.name })) });
 const first = items[0];
 const intro = first
   ? `${place.name} bisa dicapai dengan Transjakarta. Halte terdekat adalah ${first.stop.name}, sekitar ${formatDistance(first.distance)} (±${first.walk} menit jalan kaki)${items.length > 1 ? `, dan ada ${items.length - 1} halte lain ${farOnly ? "dalam radius 2 km" : "dalam radius 600 m"}` : ""}. Total ${routeMap.size} rute berhenti di halte-halte tersebut.`
@@ -68,28 +67,7 @@ const intro = first
 
   <TripButtons point={`tempat/${slug}`} name={place.name} />
 
-  {mapUrl && (
-    <details class="map-toggle" id="place-map">
-      <summary>
-        <span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
-        <span class="mt-text"><b>Tampilkan peta</b><span>{place.name} dan {items.length} halte terdekat bernomor</span></span>
-        <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </summary>
-      <figure class="mini-map">
-        <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} alt={`Peta ${place.name} dan halte terdekat`} width="760" height="320" />
-        <figcaption><span class="mm-item"><span class="mm-dot is-main"></span>{place.name}</span> <span class="mm-item"><span class="mm-dot"></span>halte (nomor sesuai daftar)</span>
-          <a href={`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
-        </figcaption>
-      </figure>
-    </details>
-  )}
-  <script>
-    const box = document.getElementById("place-map");
-    if (box) {
-      const img = box.querySelector("img[data-src]");
-      box.addEventListener("toggle", () => { if (box.open && img && !img.src) img.src = window.mapSrcFor ? window.mapSrcFor(img) : img.dataset.src; });
-    }
-  </script>
+  <LocalityMap map={lmap} toggle summary={`${place.name} dan ${items.length} halte terdekat bernomor`} alt={`Peta sekitar ${place.name}`} mainLabel={place.name} gmaps={pt} />
 
   {items.length > 0 && (
     <section class="home-section">

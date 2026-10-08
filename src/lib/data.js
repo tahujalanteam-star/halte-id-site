@@ -74,6 +74,10 @@ export function loadStations() {
 }
 
 // Urutan stasiun per lin & pola layanan (scripts/build-rail-lines.py) dan aturan tarif kereta. Opsional.
+// Geometri rel dari OpenStreetMap untuk peta locality (scripts/build-rail-geo.py). Opsional: tanpa file ini peta tetap tampil tanpa garis rel.
+export function loadRailGeo() {
+  return memo("rail-geo", () => readJSON("rail-geo.json", { ways: [] }).ways || []);
+}
 export function loadRailLines() {
   return memo("rail-lines", () => readJSON("rail-lines.json", { lines: {} }).lines || {});
 }

@@ -1,10 +1,13 @@
 ---
+import LineCode from "../../components/LineCode.astro";
+import LocalityMap from "../../components/LocalityMap.astro";
+import { localityMap } from "../../lib/locality-map.js";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import TripButtons from "../../components/TripButtons.astro";
 import NearbyPlaces from "../../components/NearbyPlaces.astro";
 import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop, placeCategoryLabel, loadPlaces } from "../../lib/data.js";
 import { coordOf, distanceM, formatDistance, compassDir, staticStopMap, placesNearPoint } from "../../lib/stop-insights.js";
-import { stationList, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, lineInfo, RAIL_MODES, neighborsOnLines, stationShort, fareTableFrom, interchangesFor } from "../../lib/rail.js";
+import { stationList, stationsNearPoint, stopsNearStation, primaryMode, modeInfo, lineInfo, RAIL_MODES, neighborsOnLines, stationShort, fareTableFrom, interchangesFor , sortLines } from "../../lib/rail.js";
 import { rupiah } from "../../lib/rail-fare-core.js";
 import { stationSchedule, fmtMin } from "../../lib/schedule.js";
 
@@ -94,11 +97,8 @@ const schedSource = sched ? `Jadwal resmi ${sched.sourceName} (${sched.dateKind 
 const places = placesNearPoint(pt);
 
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
-const mapUrl = staticStopMap({
-  main: [pt],
-  others: items.map(it => ({ ...coordOf(it.id), label: it.num })),
-  token: TOKEN,
-});
+const lmap = localityMap({ center: pt, mainStation: st.slug, token: TOKEN,
+  pins: items.map(it => ({ ...coordOf(it.id), num: it.num, href: `/halte/${it.id}`, name: it.stop.name })) });
 
 const first = items[0];
 const brtNear = items.filter(it => it.stop.type === "brt");
@@ -126,7 +126,8 @@ const intro = [
       <p class="page-kicker">Stasiun {modeLabels.join(" · ")}</p>
       <h1>{st.name}</h1>
       <ul class="soft-chips">
-        {(st.modes || []).map(m => RAIL_MODES[m] && <li class="mode-chip" style={`--m:${RAIL_MODES[m].color}`}>{RAIL_MODES[m].short}</li>)}
+        {sortLines(st.lines || []).map(l => <li class="lc-chip"><LineCode line={l} name="label" size="sm" href={`/kereta/${l}`} /></li>)}
+        {!(st.lines || []).some(l => lineInfo(l).code !== "?") && (st.modes || []).map(m => RAIL_MODES[m] && <li class="mode-chip" style={`--m:${RAIL_MODES[m].color}`}>{RAIL_MODES[m].short}</li>)}
         <li><b>{items.length}</b> halte terdekat</li>
         <li><b>{routeMap.size}</b> rute Transjakarta</li>
       </ul>
@@ -228,7 +229,7 @@ const intro = [
         {lineCtx.map(({ line, rows }, li) => (
           <details class="route-ctx" style={`--c:${line.color}`} open={!sched && li < 2}>
             <summary>
-              <span class="badge-bus line-badge" style={`background:${line.color};color:#fff`}>{RAIL_MODES[line.mode]?.short || "KA"}</span>
+              {line.key && lineInfo(line.key).code !== "?" ? <LineCode line={line.key} size="lg" /> : <span class="badge-bus line-badge" style={`background:${line.color};color:#fff`}>{RAIL_MODES[line.mode]?.short || "KA"}</span>}
               <span class="ctx-sum">
                 <strong>{line.label}</strong>
                 <span class="sub">{line.ends}</span>
@@ -293,28 +294,12 @@ const intro = [
     </section>
   )}
 
-  {mapUrl && (
-    <details class="map-toggle" id="station-map">
-      <summary>
-        <span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
-        <span class="mt-text"><b>Tampilkan peta</b><span>{st.name} dan {items.length} halte terdekat bernomor</span></span>
-        <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </summary>
-      <figure class="mini-map">
-        <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} alt={`Peta ${st.name} dan halte Transjakarta terdekat`} width="760" height="320" />
-        <figcaption><span class="mm-item"><span class="mm-dot is-main"></span>{st.name}</span> <span class="mm-item"><span class="mm-dot"></span>halte (nomor sesuai daftar)</span>
-          <a href={`https://www.google.com/maps/search/?api=1&query=${st.lat},${st.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
-        </figcaption>
-      </figure>
-    </details>
+  {lmap && (
+    <section class="home-section lm-section">
+      <div class="section-head"><h2>Peta Sekitar Stasiun</h2><span class="count">±8 menit jalan kaki</span></div>
+      <LocalityMap map={lmap} alt={`Peta sekitar ${st.name}: rel, stasiun, dan halte Transjakarta terdekat`} mainLabel={st.name} gmaps={{ lat: st.lat, lng: st.lng }} />
+    </section>
   )}
-  <script>
-    const box = document.getElementById("station-map");
-    if (box) {
-      const img = box.querySelector("img[data-src]");
-      box.addEventListener("toggle", () => { if (box.open && img && !img.src) img.src = window.mapSrcFor ? window.mapSrcFor(img) : img.dataset.src; });
-    }
-  </script>
 
   {items.length > 0 && (
     <section class="home-section">
@@ -431,7 +416,7 @@ const intro = [
             <span class="rail-main">
               <b>{s.name}</b>
               <span class="rail-meta">±{formatDistance(s.distance)} jalan kaki · ke {compassDir(pt, s)}{s.entrance && ` · pintu ${s.entrance}`}</span>
-              <span class="rail-lines">{(s.lines || []).map(l => <i style={`--l:${lineInfo(l).color}`}>{lineInfo(l).short}</i>)}</span>
+              <span class="rail-lines lc-row">{sortLines(s.lines || []).map(l => <LineCode line={l} name="label" size="sm" />)}</span>
             </span>
             <svg class="rail-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </a>

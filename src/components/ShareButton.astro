@@ -1,0 +1,28 @@
+---
+// Tombol "Bagikan": memakai menu bagikan bawaan ponsel (Web Share API); di desktop menyalin tautan.
+const { title = "", text = "" } = Astro.props;
+---
+<button type="button" class="tcta share-btn" data-share-title={title} data-share-text={text}>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>
+  <span>Bagikan</span>
+</button>
+<script>
+  document.querySelectorAll<HTMLButtonElement>(".share-btn").forEach(btn => {
+    if (btn.dataset.ready) return;
+    btn.dataset.ready = "1";
+    btn.addEventListener("click", async () => {
+      const url = (document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null)?.href || location.href;
+      const data = { title: btn.dataset.shareTitle || document.title, text: btn.dataset.shareText || undefined, url };
+      const label = btn.querySelector("span")!;
+      try {
+        if (navigator.share) { await navigator.share(data); return; }
+        await navigator.clipboard.writeText(url);
+        label.textContent = "Tautan disalin";
+      } catch (e) {
+        if ((e as Error)?.name === "AbortError") return;   // pengguna menutup menu bagikan
+        label.textContent = "Salin tautan dari bilah alamat";
+      }
+      setTimeout(() => { label.textContent = "Bagikan"; }, 2200);
+    });
+  });
+</script>

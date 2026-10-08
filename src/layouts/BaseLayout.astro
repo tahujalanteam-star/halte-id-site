@@ -63,9 +63,7 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#2652d9" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0e15" media="(prefers-color-scheme: dark)" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <script is:inline>
       try {
         var t = localStorage.getItem("theme");
@@ -74,6 +72,13 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       } catch (e) {}
     </script>
     <style is:global>
+      /* Plus Jakarta Sans (variable, OFL) di-host sendiri: public/fonts/ */
+      @font-face { font-family: "Plus Jakarta Sans"; font-style: normal; font-display: swap; font-weight: 200 800;
+        src: url(/fonts/plus-jakarta-sans-latin.woff2) format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: "Plus Jakarta Sans"; font-style: normal; font-display: swap; font-weight: 200 800;
+        src: url(/fonts/plus-jakarta-sans-latin-ext.woff2) format("woff2");
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
       /* Palet halte.id — "kertas & tinta" (terang) dan "malam kota" (gelap) */
       :root {
         --bg-color: #f4f4f0; --card-bg: #ffffff; --card-raised: #fbfbf9;
@@ -780,6 +785,41 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       #theme-toggle .ic-sun { display: none; }
       [data-theme="dark"] #theme-toggle .ic-sun { display: block; }
       [data-theme="dark"] #theme-toggle .ic-moon { display: none; }
+      /* Peta locality (src/components/LocalityMap.astro) */
+      .lm-frame { position: relative; overflow: hidden; height: calc(520px * var(--s, 1)); background: var(--bg-color); }
+      .lm-stage { position: absolute; left: 50%; top: 0; width: 760px; height: 520px; transform: translateX(-50%) scale(var(--s, 1)); transform-origin: top center; }
+      .mini-map.lm .lm-stage img { position: absolute; inset: 0; width: 760px; height: 520px; aspect-ratio: auto; object-fit: cover; }
+      .lm-svg { position: absolute; inset: 0; width: 760px; height: 520px; font-family: var(--font-head); }
+      .lm-rail path { fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
+      .lm-ring { fill: none; stroke: var(--text-main); stroke-width: 1.6; stroke-dasharray: 1.5 5; stroke-linecap: round; opacity: .55; }
+      .lm-ring-t { font-size: 12.5px; font-weight: 700; fill: var(--text-main); stroke: var(--card-bg); stroke-width: 3.5px; paint-order: stroke; }
+      .lm-box { fill: var(--card-bg); stroke: var(--text-main); stroke-width: 1.8; stroke-linejoin: round; }
+      .lm-box.is-under { stroke-dasharray: 3 2; }
+      .lm-box.is-main { fill: color-mix(in srgb, var(--primary) 16%, var(--card-bg)); stroke: var(--primary); stroke-width: 2.4; }
+      .lm-pin rect, .lm-pin circle { fill: #5d6675; stroke: #fff; stroke-width: 1.8; }
+      .lm-pin text { font-size: 11px; font-weight: 800; fill: #fff; text-anchor: middle; }
+      .lm-pin.is-main rect, .lm-pin.is-main circle { fill: var(--primary); stroke-width: 2.4; }
+      .lm-pin.is-main .dot { fill: #fff; stroke: none; }
+      a:hover > .lm-pin rect { fill: var(--primary); }
+      .lm-code rect { fill: #fff; stroke-width: 2.6; }
+      .lm-code text { font-size: 11px; font-weight: 800; text-anchor: middle; }
+      .lm-name { font-size: 13px; font-weight: 800; fill: var(--text-main); stroke: var(--card-bg); stroke-width: 3.5px; paint-order: stroke; }
+      .lm-label.is-main .lm-name { font-size: 14.5px; fill: var(--primary); }
+      .lm-label:hover .lm-name { fill: var(--primary); }
+      .lm-legend { gap: .35rem 1rem; }
+      .lm-ring-key { width: 14px; height: 14px; border-radius: 50%; border: 1.6px dashed var(--text-sub); flex: none; }
+      .lm-box-key { width: 18px; height: 7px; border: 1.6px solid var(--text-main); background: var(--card-bg); flex: none; }
+      /* Kode lin kereta (A, B, C, M, BK, ...) */
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      .lc { display: inline-flex; align-items: center; gap: .32rem; font-weight: 700; color: var(--text-main); white-space: nowrap; vertical-align: middle; }
+      a.lc:hover { text-decoration: none; }
+      a.lc:hover span { color: var(--primary); }
+      .lc b { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 .28rem; border-radius: 999px; box-sizing: border-box;
+        border: 2.5px solid var(--lc); color: var(--lc); background: #fff; font-size: .72rem; font-weight: 800; line-height: 1; letter-spacing: -.01em; }
+      .lc.is-sm { gap: .25rem; font-size: .76rem; }
+      .lc.is-sm b { min-width: 1.2rem; height: 1.2rem; font-size: .62rem; border-width: 2px; padding: 0 .2rem; }
+      .lc.is-lg b { min-width: 2.6rem; height: 2.6rem; font-size: 1.05rem; border-width: 4px; padding: 0 .35rem; }
+      .lc-row { display: inline-flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: center; }
       /* Tautan ke perencana perjalanan */
       .trip-cta { display: flex; flex-wrap: wrap; gap: .5rem; margin: -.6rem 0 1.4rem; }
       .page-about .stop-intro { margin: 0; }
@@ -788,6 +828,10 @@ const pageDescription = description || "Panduan bus dan kereta Jakarta: rute dan
       .tcta:hover { text-decoration: none; border-color: var(--primary); }
       .tcta.is-main { color: #fff; background: var(--primary); border-color: var(--primary); }
       .tcta svg { width: 17px; height: 17px; }
+      button.tcta { font: inherit; font-weight: 700; font-size: .9rem; cursor: pointer; }
+      .share-btn { color: var(--text-main); border-color: var(--border-color); }
+      .share-btn:hover { border-color: var(--primary); color: var(--primary); }
+      .page-share { margin: .9rem 0 1.2rem; }
       .home-trip { display: inline-flex; align-items: center; gap: .6rem; margin-top: .9rem; padding: .6rem .9rem; border-radius: 14px; font-size: .9rem; color: var(--text-sub);
         background: color-mix(in srgb, var(--card-bg) 80%, transparent); border: 1px solid var(--border-color); max-width: 100%; }
       .home-trip b { color: var(--text-main); }

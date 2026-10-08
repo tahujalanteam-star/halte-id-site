@@ -1,9 +1,12 @@
 ---
+import LineCode from "../../components/LineCode.astro";
+import LocalityMap from "../../components/LocalityMap.astro";
+import { localityMap } from "../../lib/locality-map.js";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import TripButtons from "../../components/TripButtons.astro";
 import NearbyPlaces from "../../components/NearbyPlaces.astro";
 import { routeLabel, placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
-import { stationsForStop, primaryMode, modeInfo, lineInfo, CURATED_MATCH } from "../../lib/rail.js";
+import { stationsForStop, primaryMode, modeInfo, lineInfo, CURATED_MATCH , sortLines } from "../../lib/rail.js";
 import { routeContext, nearbyStops, placesNearStop, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
 
 export async function getStaticPaths() {
@@ -101,11 +104,8 @@ const where = id => {
   return `${formatDistance(distanceM(me, c))} · ke ${compassDir(me, c)}`;
 };
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
-const mapUrl = me ? staticStopMap({
-  main: [me],
-  others: numbered.map(id => { const c = coordOf(id); return c ? { ...c, label: numOf(id) } : null; }).filter(Boolean),
-  token: TOKEN,
-}) : null;
+const lmap = me ? localityMap({ center: me, mainPoint: me, token: TOKEN,
+  pins: numbered.map(id => { const c = coordOf(id); return c ? { ...c, num: numOf(id), href: `/halte/${id}`, name: nameOf(id) } : null; }).filter(Boolean) }) : null;
 
 // Paragraf pembuka unik per halte
 const corridorIds = serving.filter(r => categoryOf(r) === "brt").map(r => r.id);
@@ -176,7 +176,7 @@ const ldSchema = {
                 {r.integrated && <span class="rail-int">Terintegrasi</span>}
                 ±{formatDistance(r.distance)} jalan kaki{me && ` · ke ${compassDir(me, r.at || r)}`}{r.entrance && ` · via ${r.entrance}`}
               </span>
-              <span class="rail-lines">{(r.lines || []).map(l => <i style={`--l:${lineInfo(l).color}`}>{lineInfo(l).short}</i>)}</span>
+              <span class="rail-lines lc-row">{sortLines(r.lines || []).map(l => <LineCode line={l} name="label" size="sm" />)}</span>
             </span>
             <svg class="rail-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </a>
@@ -185,30 +185,7 @@ const ldSchema = {
     </section>
   )}
 
-  {mapUrl && (
-    <details class="map-toggle" id="stop-map">
-      <summary>
-        <span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
-        <span class="mt-text"><b>Tampilkan peta</b><span>Lokasi {stop.name} dan {nearby.length + siblings.length} halte sekitar</span></span>
-        <svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-      </summary>
-      <figure class="mini-map">
-        <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} alt={`Peta lokasi halte ${stop.name} dan halte di sekitarnya`} width="760" height="320" />
-        <figcaption><span class="mm-item"><span class="mm-dot is-main"></span>{stop.name}</span> <span class="mm-item"><span class="mm-dot"></span>halte sekitar (nomor sesuai daftar di bawah)</span>
-          <a href={`https://www.google.com/maps/search/?api=1&query=${me.lat},${me.lng}`} target="_blank" rel="noopener nofollow">Buka di Google Maps</a>
-        </figcaption>
-      </figure>
-    </details>
-  )}
-  <script>
-    // Peta selalu tertutup saat halaman dibuka; gambar baru diminta ke Mapbox saat dibuka (hemat kuota).
-    const box = document.getElementById("stop-map");
-    if (box) {
-      const img = box.querySelector("img[data-src]");
-      box.addEventListener("toggle", () => { if (box.open && img && !img.src) img.src = window.mapSrcFor ? window.mapSrcFor(img) : img.dataset.src; });
-      try { localStorage.removeItem("stopMapOpen"); } catch (e) {}
-    }
-  </script>
+  <LocalityMap map={lmap} toggle summary={`Lokasi ${stop.name} dan ${nearby.length + siblings.length} halte sekitar`} alt={`Peta sekitar halte ${stop.name}`} mainLabel={stop.name} gmaps={me} />
 
   {serving.length === 0 ? (
     <p class="lead">Belum ada data rute untuk halte ini.</p>

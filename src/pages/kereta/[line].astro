@@ -1,4 +1,6 @@
 ---
+import LineCode from "../../components/LineCode.astro";
+import ShareButton from "../../components/ShareButton.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { badgeVars, loadStations, loadStops, loadStopServices, loadRoutesIndex, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { formatDistance } from "../../lib/stop-insights.js";
@@ -101,7 +103,7 @@ const intro = [
       <circle cx="380" cy="84" r="9" fill="var(--c)" stroke="currentColor" stroke-width="5"/>
     </svg>
     <div class="hero-main">
-      <span class="hero-badge">{mode.short}</span>
+      <span class="hero-badge" title={`Kode lin ${line.code}`}>{line.code}</span>
       <div class="hero-text">
         <p class="hero-kicker">{mode.label}</p>
         <h1>{line.label}</h1>
@@ -114,6 +116,7 @@ const intro = [
       {fareText && <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16a2 2 0 0 1 2 2v2.2a2.5 2.5 0 0 0 0 4.6v2.2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2.2a2.5 2.5 0 0 0 0-4.6V7.5a2 2 0 0 1 2-2Z"/><path d="M9 12h6"/></svg>{fareText}</li>}
     </ul>
   </header>
+  <div class="trip-cta page-share"><ShareButton /></div>
 
   <p class="stop-intro">{intro}</p>
 
@@ -139,7 +142,7 @@ const intro = [
             </div>
             {(r.otherLines.length > 0 || r.kai || r.tjRoutes > 0) && (
               <div class="transfers-wrapper">
-                {r.otherLines.map(l => <a href={`/kereta/${l.key}`} class="transfer-badge" style={`background-color:${l.color}`} title={l.title}>{l.label}</a>)}
+                {r.otherLines.map(l => <LineCode line={l.key} size="sm" href={`/kereta/${l.key}`} title={l.title} />)}
                 {r.kai && <span class="transfer-badge" style={`background-color:${RAIL_MODES.kai.color}`} title={r.kai}>KAI</span>}
                 {r.tjRoutes > 0 && <a href={`/stasiun/${r.slug}`} class="transfer-badge transfer-tj" title={r.nearest ? `Halte terdekat: ${r.nearest.name} (${formatDistance(r.nearest.distance)})` : undefined}>{r.tjRoutes} rute TJ</a>}
               </div>

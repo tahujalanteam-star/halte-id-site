@@ -1,0 +1,10 @@
+---
+// Lencana kode lin kereta (A, B, C, M, BK, ...): bulatan bercincin warna lin, opsional dengan nama.
+// name: false | "short" | "label" | teks bebas. size: "sm" | "md" | "lg". href: jadikan tautan.
+import { lineInfo } from "../lib/rail.js";
+const { line, name = false, size = "md", href = null, title = null, class: cls = "" } = Astro.props;
+const L = lineInfo(line);
+const text = name === "short" ? L.short : name === "label" ? L.label : name || "";
+const Tag = href ? "a" : "span";
+---
+<Tag class={`lc is-${size} ${cls}`} style={`--lc:${L.color}`} href={href || undefined} title={title || `${L.label} (${L.code})`}><b aria-hidden={text ? "true" : undefined}>{L.code}</b>{text ? <span>{text}</span> : <span class="sr-only">{L.label}</span>}</Tag>

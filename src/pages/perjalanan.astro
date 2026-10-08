@@ -113,7 +113,8 @@ const pinIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
     .td-route { display: flex; gap: .8rem; align-items: flex-start; padding: .7rem .8rem; border: 1px solid var(--border-color); border-radius: 14px; color: var(--text-main); }
     .td-route:hover { text-decoration: none; border-color: var(--primary); }
     .td-route .badge-bus { flex: none; min-width: 2.6rem; height: 2rem; border-radius: 9px; margin-top: .1rem; }
-    .td-badges { display: flex; flex-direction: column; gap: .3rem; flex: none; }
+    .td-badges { display: flex; flex-direction: row; gap: .25rem; flex: none; }
+    .td-lc b { min-width: 2.1rem; height: 2.1rem; font-size: .85rem; border-width: 3.5px; }
     .td-route .td-rail { font-size: .72rem; padding: 0 .45rem; max-width: 6.5rem; text-align: center; line-height: 1.1; }
     .td-body { display: flex; flex-direction: column; gap: .15rem; min-width: 0; font-size: .88rem; }
     .td-body > b { font-size: .95rem; }
@@ -292,7 +293,7 @@ const pinIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
                 <span class="td-leg">Turun di <b>${esc(H[h.to].label)}</b>${walk(h.dB)} · ${h.n} halte</span></span></a></li>`;
           }
           const [key] = h.row;
-          const badges = h.rows.map(([, badge, color]) => `<span class="badge-bus td-rail" style="--c:${color};--on:#fff">${esc(badge)}</span>`).join("");
+          const badges = h.rows.map(([, code, color]) => `<span class="lc is-lg td-lc" style="--lc:${color}"><b>${esc(code)}</b></span>`).join("");
           return `<li><a class="td-route" href="/kereta/${key}">
             <span class="td-badges">${badges}</span>
             <span class="td-body"><b>${esc(h.rows.map(r => r[3]).join(" / "))}</b>

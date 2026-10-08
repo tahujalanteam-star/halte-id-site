@@ -112,7 +112,7 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
         <div class="grid near-grid">${nearSt.map((x, i) => `<div class="near-card nearest-card">
           <a class="near-top" href="/stasiun/${x.slug}"><span class="near-num is-rail" style="background:${x.mode[0]}">${String.fromCharCode(65 + i)}</span><b>${esc(x.name)}</b><span class="near-dist" style="background:${x.mode[0]};color:#fff">${esc(x.mode[1])}</span></a>
           <span class="near-where">${fmt(x.d)} · ke ${dirOf(me, x)}${walk(x.d) ? " · " + walk(x.d) : ""}${x.via ? " · lewat " + esc(x.via) : ""}</span>
-          ${x.lines.length ? `<span class="near-badges">${x.lines.map(l => `<a class="badge-bus" href="/kereta/${l[0]}" style="--c:${l[2]};--on:#fff">${esc(l[1])}</a>`).join("")}</span>` : ""}
+          ${x.lines.length ? `<span class="lc-row">${x.lines.map(l => `<a class="lc is-sm" href="/kereta/${l[0]}" style="--lc:${l[2]}"><b>${esc(l[1])}</b><span>${esc(l[3] || "")}</span></a>`).join("")}</span>` : ""}
           <span class="nearest-actions"><a href="/stasiun/${x.slug}${x.sched ? "#jadwal" : ""}">${x.sched ? "Kereta berikutnya" : "Detail stasiun"}</a><a href="https://www.google.com/maps/dir/?api=1&origin=${me.lat},${me.lng}&destination=${x.lat},${x.lng}&travelmode=walking" target="_blank" rel="noopener nofollow">Petunjuk jalan kaki ↗</a></span>
         </div>`).join("")}</div>` : "";
 

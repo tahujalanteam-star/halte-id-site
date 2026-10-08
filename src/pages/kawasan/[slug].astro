@@ -1,4 +1,7 @@
 ---
+import LocalityMap from "../../components/LocalityMap.astro";
+import { localityMap } from "../../lib/locality-map.js";
+import ShareButton from "../../components/ShareButton.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { stopGroups, coordOf, staticStopMap } from "../../lib/stop-insights.js";
@@ -25,7 +28,9 @@ const cats = groupByCategory(allRoutes);
 const brtCount = members.filter(m => m.stop.type === "brt").length;
 
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
-const mapUrl = staticStopMap({ main: members.map((m, i) => { const c = coordOf(m.id); return c ? { ...c, label: i + 1 } : null; }).filter(Boolean), token: TOKEN });
+const memberPins = members.map((m, i) => { const c = coordOf(m.id); return c ? { ...c, num: i + 1, href: `/halte/${m.id}`, name: m.stop.name } : null; }).filter(Boolean);
+const center = memberPins.length ? { lat: memberPins.reduce((t, p) => t + p.lat, 0) / memberPins.length, lng: memberPins.reduce((t, p) => t + p.lng, 0) / memberPins.length } : null;
+const lmap = center ? localityMap({ center, pins: memberPins, token: TOKEN }) : null;
 ---
 <BaseLayout
   title={`${group.name}: Halte & Rute Transjakarta`}
@@ -49,6 +54,7 @@ const mapUrl = staticStopMap({ main: members.map((m, i) => { const c = coordOf(m
       </ul>
     </div>
   </header>
+  <div class="trip-cta page-share"><ShareButton /></div>
 
   <p class="stop-intro">
     {group.name} terdiri dari {members.length} halte yang letaknya berdekatan dan bisa dijangkau dengan berjalan kaki.
@@ -56,12 +62,7 @@ const mapUrl = staticStopMap({ main: members.map((m, i) => { const c = coordOf(m
     biasanya berarti keluar dari satu halte lalu masuk lagi di halte lain, jadi perhatikan aturan tap in dan tap out.
   </p>
 
-  {mapUrl && (
-    <figure class="mini-map">
-      <img data-src={mapUrl} data-src-dark={mapUrl.replace("/streets-v12/", "/dark-v11/")} data-autoload alt={`Peta halte-halte di ${group.name}`} width="760" height="320" loading="lazy" />
-      <figcaption><span class="mm-item"><span class="mm-dot is-main"></span>Halte di {group.name} (nomor sesuai daftar di bawah)</span></figcaption>
-    </figure>
-  )}
+  <LocalityMap map={lmap} alt={`Peta ${group.name}: halte, stasiun, dan rel di sekitarnya`} gmaps={center} />
 
   <section class="home-section">
     <div class="section-head"><h2>Halte di Kawasan Ini</h2><span class="count">{members.length}</span></div>

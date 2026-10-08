@@ -1,6 +1,7 @@
 ---
+import LineCode from "../../components/LineCode.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { stationList, MODE_ORDER, RAIL_MODES, lineInfo, isOpen } from "../../lib/rail.js";
+import { stationList, MODE_ORDER, RAIL_MODES, lineInfo, isOpen , sortLines } from "../../lib/rail.js";
 
 const all = stationList({ openOnly: false });
 const open = all.filter(isOpen);
@@ -32,7 +33,7 @@ const groups = MODE_ORDER.map(key => ({
         {g.items.map(s => isOpen(s) ? (
           <a href={`/stasiun/${s.slug}`} class="st-card">
             <b>{s.short}</b>
-            <span class="rail-lines">{(s.lines || []).map(l => <i style={`--l:${lineInfo(l).color}`}>{lineInfo(l).short}</i>)}</span>
+            <span class="rail-lines lc-row">{sortLines(s.lines || []).map(l => <LineCode line={l} name="label" size="sm" />)}</span>
           </a>
         ) : (
           <div class="st-card is-soon">

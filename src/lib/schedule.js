@@ -98,7 +98,7 @@ export function scheduleJson(slug) {
   const H = loadHolidays();
   const names = [], lines = [];
   const ni = slug => { const n = short(slug); let i = names.indexOf(n); if (i < 0) { names.push(n); i = names.length - 1; } return i; };
-  const li = key => { let i = lines.findIndex(l => l[0] === key); if (i < 0) { const L = lineInfo(key); lines.push([key, key.startsWith("mrt") ? "MRT" : L.short, L.color]); i = lines.length - 1; } return i; };
+  const li = key => { let i = lines.findIndex(l => l[0] === key); if (i < 0) { const L = lineInfo(key); lines.push([key, L.code, L.color]); i = lines.length - 1; } return i; };
   return {
     v: 2, src: s.sourceName,
     hol: (H.libur_nasional || []).map(h => h.date), cuti: (H.cuti_bersama || []).map(h => h.date),

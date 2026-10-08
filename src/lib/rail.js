@@ -36,7 +36,16 @@ export const LINE_BADGE = {
   "krl-tanjung-priok": "KRL Tj. Priok", "krl-bandara": "KA Bandara", "krl-walahar": "KRL Walahar", "mrt-utara-selatan": "MRT",
   "lrt-cibubur": "LRT Cibubur", "lrt-bekasi": "LRT Bekasi", "lrt-jakarta": "LRT Jakarta", "whoosh": "Whoosh",
 };
-export const lineInfo = key => RAIL_LINES[key] || { label: key, short: key, color: "#6b7381", ends: "" };
+// Kode lin standar (dipakai di peta integrasi FDTJ & penamaan resmi): A Bandara, B Bogor, C Cikarang, dst.
+// LW (Walahar) dari OpenStreetMap; W (Whoosh) sementara, belum ada kode resmi.
+export const LINE_CODE = {
+  "krl-bandara": "A", "krl-bogor": "B", "krl-cikarang": "C", "krl-rangkasbitung": "R", "krl-tangerang": "T", "krl-tanjung-priok": "TP",
+  "krl-walahar": "LW", "mrt-utara-selatan": "M", "lrt-jakarta": "S", "lrt-bekasi": "BK", "lrt-cibubur": "CB", "whoosh": "W",
+};
+export const lineCode = key => LINE_CODE[key] || "?";
+export const lineInfo = key => RAIL_LINES[key] ? { ...RAIL_LINES[key], code: lineCode(key) } : { label: key, short: key, color: "#6b7381", ends: "", code: "?" };
+// Urutan tampil kode di daftar: A, B, C, ... (bukan urutan data)
+export const sortLines = lines => [...lines].filter(l => RAIL_LINES[l]).sort((a, b) => lineCode(a).localeCompare(lineCode(b)));
 
 export const primaryMode = st => MODE_ORDER.find(m => (st.modes || []).includes(m)) || (st.modes || [])[0] || "krl";
 export const modeInfo = key => RAIL_MODES[key] || RAIL_MODES.krl;
@@ -285,7 +294,7 @@ export function railBadgesForStop(stopId) {
     for (const l of lines) {
       if (seen.has(l)) continue;
       seen.add(l);
-      out.push({ text: LINE_BADGE[l] || lineInfo(l).short, href: `/kereta/${l}`, color: lineInfo(l).color, title: `${lineInfo(l).label} · ${st.name}` });
+      out.push({ text: LINE_BADGE[l] || lineInfo(l).short, code: lineCode(l), key: l, href: `/kereta/${l}`, color: lineInfo(l).color, title: `${lineInfo(l).label} (${lineCode(l)}) · ${st.name}` });
     }
   }
   return { badges: out, handled };
