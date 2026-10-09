@@ -2,6 +2,8 @@
 import LocalityMap from "../../components/LocalityMap.astro";
 import { localityMap } from "../../lib/locality-map.js";
 import ShareButton from "../../components/ShareButton.astro";
+import TerminalDiagram from "../../components/TerminalDiagram.astro";
+import { TERMINALS, terminalOfStop } from "../../lib/terminals.js";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { routeLabel, badgeVars, groupByCategory, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { stopGroups, coordOf, staticStopMap } from "../../lib/stop-insights.js";
@@ -27,6 +29,7 @@ const allRoutes = [...routeMap.values()];
 const cats = groupByCategory(allRoutes);
 const brtCount = members.filter(m => m.stop.type === "brt").length;
 
+const terminal = group.stopIds.map(terminalOfStop).find(Boolean) || null;
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 const memberPins = members.map((m, i) => { const c = coordOf(m.id); return c ? { ...c, num: i + 1, href: `/halte/${m.id}`, name: m.stop.name } : null; }).filter(Boolean);
 const center = memberPins.length ? { lat: memberPins.reduce((t, p) => t + p.lat, 0) / memberPins.length, lng: memberPins.reduce((t, p) => t + p.lng, 0) / memberPins.length } : null;
@@ -63,6 +66,12 @@ const lmap = center ? localityMap({ center, pins: memberPins, token: TOKEN }) : 
   </p>
 
   <LocalityMap map={lmap} alt={`Peta ${group.name}: halte, stasiun, dan rel di sekitarnya`} gmaps={center} />
+  {terminal && (
+    <section class="home-section">
+      <div class="section-head"><h2>Denah {TERMINALS[terminal].name}</h2><span class="count">{TERMINALS[terminal].jalur.length} jalur</span></div>
+      <TerminalDiagram terminal={terminal} />
+    </section>
+  )}
 
   <section class="home-section">
     <div class="section-head"><h2>Halte di Kawasan Ini</h2><span class="count">{members.length}</span></div>

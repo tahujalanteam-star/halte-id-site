@@ -3,10 +3,11 @@
 // proyeksi Web Mercator yang sama dengan Mapbox (ubin 512 px). Lapisan: rel → lingkaran jalan kaki → kotak peron → halte → label.
 import { loadRailGeo, loadStations } from "./data.js";
 import { RAIL_LINES, lineInfo, isOpen } from "./rail.js";
+import { TERMINALS, terminalOfStop } from "./terminals.js";
 
 export const LM_W = 760, LM_H = 520;
 const RING_M = 600;          // lingkaran ±8 menit jalan kaki
-const RING_PX = 205;         // jari-jari lingkaran 600 m di peta standar
+const RING_PX = 235;         // jari-jari lingkaran 600 m di peta standar (sisa ±25 px atas-bawah)
 const SAFE_X = 125;          // di ponsel (skala 0,72) ±125 px kiri-kanan terpotong
 const UNDERGROUND = new Set(["mrt-bundaran-hi", "mrt-dukuh-atas", "mrt-setiabudi", "mrt-bendungan-hilir", "mrt-istora", "mrt-senayan"]);
 // Panjang peron perkiraan (m): rangkaian terpanjang tiap moda
@@ -41,6 +42,16 @@ function nearSeg(p, a, b) {
   const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L)), q = [a[0] + t * dx, a[1] + t * dy];
   return { d: Math.hypot(p[0] - q[0], p[1] - q[1]), q, dir: [dx, dy] };
 }
+// Jarak titik ke kotak (0 bila di dalam)
+function nearBox(c, x, y) {
+  let inside = false, d = Infinity;
+  for (let i = 0, j = c.length - 1; i < c.length; j = i++) {
+    const [xi, yi] = c[i], [xj, yj] = c[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    d = Math.min(d, nearSeg([x, y], c[j], c[i]).d);
+  }
+  return inside ? 0 : d;
+}
 // [1,3,4,5] → "1,3–5"
 const numText = nums => {
   const out = [];
@@ -60,10 +71,10 @@ const numText = nums => {
 export function localityMap({ center, mainStation = null, mainPoint = null, pins = [], token }) {
   if (!token || !center) return null;
   const W = LM_W, H = LM_H;
-  // Zoom: lingkaran 600 m ±205 px; diperkecil bila ada halte bernomor yang lebih jauh
+  // Zoom: lingkaran 600 m ±235 px; diperkecil bila ada halte bernomor yang lebih jauh
   const far = Math.max(RING_M, ...pins.map(p => meters(center, p) + 70));
   const mpp0 = 40075016.686 * Math.cos(center.lat * Math.PI / 180) / 512;
-  const z = Math.floor(Math.log2(mpp0 / (far / RING_PX)) * 4) / 4;
+  const z = Math.floor(Math.log2(mpp0 / (far / RING_PX)) * 100) / 100;   // Mapbox Static menerima zoom pecahan (2 desimal)
   const mpp = mpp0 / 2 ** z;
   const [cx, cy] = world(center.lat, center.lng, z);
   const P = (lat, lng) => { const [x, y] = world(lat, lng, z); return [x - cx + W / 2, y - cy + H / 2]; };
@@ -144,53 +155,71 @@ export function localityMap({ center, mainStation = null, mainPoint = null, pins
       badges: own_lines.map(l => ({ code: lineInfo(l).code, color: lineInfo(l).color })) });
   }
 
-  // ---- halte: titik utama + halte bernomor (yang berimpit digabung jadi "1–3")
-  const groups = [];
-  const main = mainPoint ? { p: P(mainPoint.lat, mainPoint.lng), nums: [], main: true } : null;
-  if (main) groups.push(main);
+  // ---- lingkaran & labelnya
+  const ring = { cx: W / 2, cy: H / 2, r: r1(RING_M / mpp) };
+  // label di dalam lingkaran, tepat di bawah puncaknya (tetap terlihat walau tepi kiri-kanan peta terpotong di ponsel)
+  const ringLabel = { x: ring.cx, y: r1(Math.max(18, ring.cy - ring.r + 20)) };
+  occ.push([ringLabel.x - 68, ringLabel.y - 14, ringLabel.x + 68, ringLabel.y + 4]);
+
+  // ---- halte: titik utama + halte bernomor. Tiap halte punya titik tepat di lokasinya; bulatan nomornya
+  // diletakkan di dekatnya tanpa bertumpuk, dengan garis penghubung bila digeser (tidak ada penggabungan "1–3").
+  const BR = 10;                                   // jari-jari bulatan nomor
+  const main = mainPoint ? { p: P(mainPoint.lat, mainPoint.lng), nums: [] } : null;
+  const items = [];
   for (const pin of [...pins].sort((a, b) => a.num - b.num)) {
     const p = P(pin.lat, pin.lng);
     if (!inFrame(p, -8)) continue;
-    if (main && Math.hypot(main.p[0] - p[0], main.p[1] - p[1]) < 16) { main.nums.push(pin.num); continue; }
-    const g = groups.find(g => !g.main && Math.hypot(g.p[0] - p[0], g.p[1] - p[1]) < 14);
-    if (g) { g.nums.push(pin.num); g.p = [(g.p[0] * (g.nums.length - 1) + p[0]) / g.nums.length, (g.p[1] * (g.nums.length - 1) + p[1]) / g.nums.length]; g.names.push(pin.name); }
-    else groups.push({ p, nums: [pin.num], href: pin.href, names: [pin.name] });
+    if (main && !terminalOfStop((pin.href || '').replace(/^\/halte\//, '')) && Math.hypot(main.p[0] - p[0], main.p[1] - p[1]) < 4) { main.nums.push(pin.num); continue; }   // halte yang sama dengan titik utama
+    items.push({ p, num: pin.num, href: pin.href, name: pin.name, w: 20 });
   }
-  // gabungkan kelompok yang lambangnya masih bertumpuk (mis. "3" menempel "1,4,5")
-  const pillW = g => { const t = numText([...g.nums].sort((a, b) => a - b)); return t.length <= 2 ? 20 : 10 + t.length * 7; };
-  for (let changed = true; changed;) {
-    changed = false;
-    outer: for (let i = 0; i < groups.length; i++) for (let j = i + 1; j < groups.length; j++) {
-      const a = groups[i], b = groups[j];
-      if (a.main || b.main) continue;
-      if (Math.abs(a.p[0] - b.p[0]) < (pillW(a) + pillW(b)) / 2 + 2 && Math.abs(a.p[1] - b.p[1]) < 22) {
-        const n = a.nums.length + b.nums.length;
-        a.p = [(a.p[0] * a.nums.length + b.p[0] * b.nums.length) / n, (a.p[1] * a.nums.length + b.p[1] * b.nums.length) / n];
-        a.nums = [...a.nums, ...b.nums].sort((x, y) => x - y); a.names = [...a.names, ...b.names];
-        groups.splice(j, 1); changed = true; break outer;
-      }
-    }
+  // Jalur-jalur satu terminal (berjarak beberapa meter) jadi satu penanda yang menaut ke denah terminal
+  const termGroups = new Map();
+  for (const it of [...items]) {
+    const key = terminalOfStop((it.href || "").replace(/^\/halte\//, ""));
+    if (!key) continue;
+    if (!termGroups.has(key)) termGroups.set(key, []);
+    termGroups.get(key).push(it);
   }
-  const boxesAabb = [...occ];
-  const pinsOut = groups.map(g => {
-    let [x, y] = g.p;
-    if (!g.main) for (let k = 0; k < 8; k++) {   // jangan menutupi kotak peron
-      const hit = boxesAabb.find(b => x > b[0] - 10 && x < b[2] + 10 && y > b[1] - 10 && y < b[3] + 10);
-      if (!hit) break;
-      const dx = x - (hit[0] + hit[2]) / 2, dy = y - (hit[1] + hit[3]) / 2, L = Math.hypot(dx, dy) || 1;
-      x += dx / L * 4; y += dy / L * 4;
+  for (const [key, list] of termGroups) {
+    if (list.length < 2) continue;
+    for (const it of list) items.splice(items.indexOf(it), 1);
+    const nums = list.map(it => it.num).sort((a, b) => a - b), t = numText(nums);
+    items.push({ p: [list.reduce((s, it) => s + it.p[0], 0) / list.length, list.reduce((s, it) => s + it.p[1], 0) / list.length],
+      num: nums[0], t, w: t.length <= 2 ? 20 : 10 + t.length * 7, href: `${list[0].href}#denah-terminal`, name: `${TERMINALS[key].name} (lihat denah)` });
+  }
+  const pinsOut = [];
+  const bubbles = [];                              // kotak bulatan yang sudah diletakkan
+  if (main) {
+    const t = main.nums.length ? numText(main.nums) : "", w = t ? (t.length <= 2 ? 20 : 10 + t.length * 7) : 20;
+    const r = [main.p[0] - w / 2 - 3, main.p[1] - 11, main.p[0] + w / 2 + 3, main.p[1] + 11];
+    bubbles.push(r); occ.push(r);
+    pinsOut.push({ x: r1(main.p[0]), y: r1(main.p[1]), t, w: r1(w), main: true, href: null, title: "" });
+  }
+  const dots = items.map(it => [it.p[0] - 4, it.p[1] - 4, it.p[0] + 4, it.p[1] + 4]);
+  // yang paling padat diletakkan dulu agar mendapat posisi terbaik
+  const crowd = it => items.filter(o => o !== it && Math.hypot(o.p[0] - it.p[0], o.p[1] - it.p[1]) < 26).length;
+  const order = [...items].sort((a, b) => crowd(b) - crowd(a) || a.num - b.num);
+  const cands = [[0, 0]];
+  for (const d of [15, 22, 30, 40, 52]) for (let k = 0; k < 12; k++) { const t = (k * 30 + (d % 2 ? 15 : 0)) * Math.PI / 180; cands.push([Math.cos(t) * d, Math.sin(t) * d]); }
+  for (const it of order) {
+    let best = null;
+    for (const [dx, dy] of cands) {
+      const x = it.p[0] + dx, y = it.p[1] + dy, r = [x - it.w / 2 - 1, y - BR - 1, x + it.w / 2 + 1, y + BR + 1];
+      let sc = Math.hypot(dx, dy) * 1.5;
+      for (const o of bubbles) sc += overlap(r, o) * 4;
+      dots.forEach((o, i) => { if (items[i] !== it) sc += overlap(r, o) * 6; });
+      for (const st of stations) if (nearBox(st.corners, x, y) < BR + 2) sc += 300;   // jangan menutupi kotak stasiun
+      for (const o of occ) if (!bubbles.includes(o) && !stations.some(st => st.aabb === o)) sc += overlap(r, o) * 2;   // label lingkaran
+      if (x < it.w / 2 + 4 || y < BR + 4 || x > W - it.w / 2 - 4 || y > H - BR - 4) sc += 1e5;
+      if ((x < SAFE_X || x > W - SAFE_X) && it.p[0] >= SAFE_X && it.p[0] <= W - SAFE_X) sc += 400;
+      if (!best || sc < best.sc) best = { sc, x, y, r };
     }
-    const t = g.main ? (g.nums.length ? numText(g.nums) : "") : numText(g.nums);
-    const w = t.length <= 2 ? 20 : 10 + t.length * 7;
-    occ.push([x - w / 2, y - 10, x + w / 2, y + 10]);
-    return { x: r1(x), y: r1(y), t, w: r1(w), main: !!g.main, href: g.href || null, title: g.names ? g.names.join(" · ") : "" };
-  });
-
-  // ---- lingkaran & labelnya
-  const ring = { cx: W / 2, cy: H / 2, r: r1(RING_M / mpp) };
-  // label di puncak lingkaran (tetap terlihat walau tepi kiri-kanan peta terpotong di ponsel)
-  const ringLabel = { x: ring.cx, y: r1(Math.max(16, ring.cy - ring.r - 7)) };
-  occ.push([ringLabel.x - 68, ringLabel.y - 14, ringLabel.x + 68, ringLabel.y + 4]);
+    bubbles.push(best.r); occ.push(best.r);
+    const moved = Math.hypot(best.x - it.p[0], best.y - it.p[1]) > 3;
+    pinsOut.push({ x: r1(best.x), y: r1(best.y), t: it.t || String(it.num), w: r1(it.w), main: false, href: it.href, title: it.name,
+      ax: r1(it.p[0]), ay: r1(it.p[1]), lead: moved });
+  }
+  for (const d of dots) occ.push(d);
 
   // ---- label stasiun: stasiun utama dulu, pilih posisi yang paling sedikit bertabrakan
   const labels = [];

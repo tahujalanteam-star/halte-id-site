@@ -5,6 +5,8 @@ import { localityMap } from "../../lib/locality-map.js";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import TripButtons from "../../components/TripButtons.astro";
 import NearbyPlaces from "../../components/NearbyPlaces.astro";
+import TerminalDiagram from "../../components/TerminalDiagram.astro";
+import { TERMINALS, terminalOfStop } from "../../lib/terminals.js";
 import { routeLabel, placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { stationsForStop, primaryMode, modeInfo, lineInfo, CURATED_MATCH , sortLines } from "../../lib/rail.js";
 import { routeContext, nearbyStops, placesNearStop, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
@@ -103,6 +105,7 @@ const where = id => {
   if (!me || !c) return null;
   return `${formatDistance(distanceM(me, c))} · ke ${compassDir(me, c)}`;
 };
+const terminal = terminalOfStop(stopId);
 const TOKEN = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 const lmap = me ? localityMap({ center: me, mainPoint: me, token: TOKEN,
   pins: numbered.map(id => { const c = coordOf(id); return c ? { ...c, num: numOf(id), href: `/halte/${id}`, name: nameOf(id) } : null; }).filter(Boolean) }) : null;
@@ -186,6 +189,12 @@ const ldSchema = {
   )}
 
   <LocalityMap map={lmap} toggle summary={`Lokasi ${stop.name} dan ${nearby.length + siblings.length} halte sekitar`} alt={`Peta sekitar halte ${stop.name}`} mainLabel={stop.name} gmaps={me} />
+  {terminal && (
+    <section class="home-section">
+      <div class="section-head"><h2>Denah {TERMINALS[terminal].name}</h2><span class="count">{TERMINALS[terminal].jalur.length} jalur</span></div>
+      <TerminalDiagram terminal={terminal} current={stopId} />
+    </section>
+  )}
 
   {serving.length === 0 ? (
     <p class="lead">Belum ada data rute untuk halte ini.</p>

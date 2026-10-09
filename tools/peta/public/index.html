@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Peta Internal · halte.id</title>
+  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.css" />
+  <link rel="stylesheet" href="/app.css" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.8.0/mapbox-gl.js"></script>
+  <script>window.MAPBOX_TOKEN = "__MAPBOX_TOKEN__";</script>
+</head>
+<body>
+  <aside id="side">
+    <header>
+      <b>halte.id</b> <span class="tag">peta internal</span>
+      <input id="q" type="search" placeholder="Cari halte, rute, atau stasiun…" autocomplete="off" />
+      <ul id="results" hidden></ul>
+    </header>
+    <section id="planner">
+      <div class="f-title">Cek rute A → B</div>
+      <div class="pl-row"><span class="dot g"></span><input id="pl-from" placeholder="Asal: halte, stasiun, atau tempat" autocomplete="off" /><ul id="pl-from-list" class="pl-list" hidden></ul></div>
+      <div class="pl-row"><span class="dot r"></span><input id="pl-to" placeholder="Tujuan" autocomplete="off" /><ul id="pl-to-list" class="pl-list" hidden></ul></div>
+      <div class="pl-acts"><button id="pl-go" class="mini pri">Cari rute</button><button id="pl-swap" class="mini" title="Tukar asal dan tujuan">⇅ Tukar</button><span id="pl-msg" class="sub"></span></div>
+    </section>
+    <section id="gangguan" hidden>
+      <div class="f-title">Gangguan aktif</div>
+      <ul id="gg-list"></ul>
+      <label class="gg-opt"><input type="checkbox" id="gg-cut" checked /> Rute terputus di titik gangguan <small>(matikan bila bus hanya tidak berhenti)</small></label>
+      <div class="pl-acts"><button id="gg-show" class="mini warn">Lihat rute terdampak</button><button id="gg-clear" class="mini">Hapus semua</button></div>
+    </section>
+    <section id="filters">
+      <div class="f-title">Tampilkan</div>
+      <div id="cats"></div>
+      <label><input type="checkbox" id="f-stops" checked /> Halte</label>
+      <label><input type="checkbox" id="f-rail" checked /> Kereta (rel & stasiun)</label>
+    </section>
+    <section id="panel">
+      <p class="hint">Klik halte, stasiun, atau garis rute di peta. Atau cari lewat kotak di atas.</p>
+    </section>
+    <footer id="meta"></footer>
+  </aside>
+  <main id="map"></main>
+  <script src="/app.js"></script>
+  <script src="/planner.js"></script>
+</body>
+</html>

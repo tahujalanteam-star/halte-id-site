@@ -9,12 +9,12 @@ const { map: m, alt, mainLabel, gmaps, autoload } = Astro.props;
     <svg class="lm-svg" viewBox={`0 0 ${m.W} ${m.H}`} role="group" aria-label={alt}>
       <g class="lm-rail">{m.lines.map(l => <path d={l.d} stroke={l.color} />)}</g>
       <circle class="lm-ring" cx={m.ring.cx} cy={m.ring.cy} r={m.ring.r} />
-      <text class="lm-ring-t" x={m.ringLabel.x} y={m.ringLabel.y} text-anchor="middle">±8 menit jalan kaki</text>
       {m.boxes.map(b => <a href={`/stasiun/${b.slug}`}><title>{b.name}</title><polygon class={`lm-box${b.main ? " is-main" : ""}${b.under ? " is-under" : ""}`} points={b.points} /></a>)}
+      <text class="lm-ring-t" x={m.ringLabel.x} y={m.ringLabel.y} text-anchor="middle">±8 menit jalan kaki</text>
       {m.pins.map(p => p.main
         ? (p.t ? <g class="lm-pin is-main"><rect x={p.x - p.w / 2 - 3} y={p.y - 11} width={p.w + 6} height="22" rx="11" /><text x={p.x} y={Math.round((p.y + 4.5) * 10) / 10}>{p.t}</text></g>
                : <g class="lm-pin is-main"><circle cx={p.x} cy={p.y} r="10" /><circle class="dot" cx={p.x} cy={p.y} r="3.4" /></g>)
-        : <a href={p.href}><title>{p.title}</title><g class="lm-pin"><rect x={p.x - p.w / 2} y={p.y - 10} width={p.w} height="20" rx="10" /><text x={p.x} y={Math.round((p.y + 4.3) * 10) / 10}>{p.t}</text></g></a>)}
+        : <a href={p.href}><title>{p.title}</title><g class="lm-pin">{p.lead && <line class="lm-lead" x1={p.ax} y1={p.ay} x2={p.x} y2={p.y} />}{p.lead && <circle class="lm-at" cx={p.ax} cy={p.ay} r="3.2" />}{p.w > 20 ? <rect x={p.x - p.w / 2} y={p.y - 10} width={p.w} height="20" rx="10" /> : <circle cx={p.x} cy={p.y} r="10" />}<text x={p.x} y={Math.round((p.y + 4) * 10) / 10}>{p.t}</text></g></a>)}
       {m.labels.map(l => {
         let bx = l.x; const cy = Math.round((l.y + 12) * 10) / 10;
         return <a href={`/stasiun/${l.slug}`} class={`lm-label${l.main ? " is-main" : ""}`}><title>{l.full}</title>
