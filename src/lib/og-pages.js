@@ -3,7 +3,7 @@ import {
   loadStops, loadRoutesIndex, loadRoute, loadStopServices, routeSlug, routeLabel, categoryOf, categoryLabel,
 } from "./data.js";
 import { stopGroups } from "./stop-insights.js";
-import { stationList, stationsForStop, stopsNearStation, primaryMode, modeInfo, lineInfo, RAIL_MODES } from "./rail.js";
+import { stationList, stationsForStop, stopsNearStation, primaryMode, modeInfo, lineInfo, sortLines, RAIL_MODES } from "./rail.js";
 
 const MODE_CHIP = { mrt: ["MRT", "#db0000"], krl: ["KRL", "#db6300"], lrt: ["LRT", "#c2185b"], kai: ["KAI", "#1e3a8a"] };
 const fmt = n => n.toLocaleString("id-ID");
@@ -55,8 +55,10 @@ export function ogSpecs() {
       icon: { name: "pin", color: "#2652d9", bg: "#e7ecfb" },
       chips: [
         { label: `${n} rute berhenti di sini` },
-        m ? { label: `Transit ${m.short}`, color: m.color } : null,
-        rail[0] ? { label: `${rail[0].name} ${Math.round(rail[0].distance / 10) * 10} m` } : null,
+        // stasiun terdekat: kode lin (A, B, C, ...) + nama & jarak; tanpa kode lin → nama moda
+        ...(rail[0] ? sortLines(rail[0].lines || []).slice(0, 3).map(l => ({ code: lineInfo(l).code, color: lineInfo(l).color })) : []),
+        rail[0] && !sortLines(rail[0].lines || []).length && m ? { label: `Transit ${m.short}`, color: m.color } : null,
+        rail[0] ? { label: `${rail[0].name.replace(/^Stasiun /, "St. ")} ${Math.round(rail[0].distance / 10) * 10} m` } : null,
       ].filter(Boolean),
     });
   }
@@ -70,7 +72,9 @@ export function ogSpecs() {
       accent: m.color, kickerColor: m.color,
       icon: { name: "train", color: "#ffffff", bg: m.color },
       chips: [
-        ...(st.lines || []).slice(0, 2).map(l => ({ label: lineInfo(l).label, color: lineInfo(l).color })),
+        ...sortLines(st.lines || []).slice(0, 5).map(l => ({ code: lineInfo(l).code, color: lineInfo(l).color })),
+        // satu lin: tulis juga namanya agar tetap terbaca bagi yang belum hafal kode
+        ...(sortLines(st.lines || []).length === 1 ? [{ label: lineInfo(sortLines(st.lines)[0]).label, color: lineInfo(sortLines(st.lines)[0]).color }] : []),
         { label: `${near.length} halte Transjakarta terdekat` },
       ],
     });

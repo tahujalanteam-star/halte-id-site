@@ -36,6 +36,10 @@ rail.forEach(s => { if (!modeMap.has(s.mode.short)) modeMap.set(s.mode.short, { 
 (stop.transfers || []).filter(t => MODE[t.type] && !rail.some(s => CURATED_MATCH[t.type]?.(s)))
   .forEach(t => { const m = t.line === "Whoosh" ? { label: "Whoosh", color: "#8c0023" } : MODE[t.type]; if (!modeMap.has(m.label)) modeMap.set(m.label, m); });
 const modes = [...modeMap.values()];
+// Lin kereta dari stasiun terdekat (kode FDTJ); moda yang tidak punya kode lin tetap tampil sebagai chip moda
+const heroLines = sortLines([...new Set(rail.flatMap(s => s.lines || []))]);
+const modesNoLine = modes.filter(m => !rail.some(s => s.mode.short === m.label && sortLines(s.lines || []).length));
+const codesOf = s => sortLines(s.lines || []).map(l => lineInfo(l).code).join(", ");
 const groups = groupByCategory(serving);
 const nameOf = id => stops[id]?.name || id;
 
@@ -115,7 +119,7 @@ const corridorIds = serving.filter(r => categoryOf(r) === "brt").map(r => r.id);
 const intro = [
   `Halte ${stop.name} adalah ${isBrt ? "halte BRT" : "halte non-BRT (bus stop di tepi jalan)"} yang dilayani ${serving.length} rute Transjakarta${corridorIds.length ? `, termasuk koridor BRT ${corridorIds.slice(0, 6).join(", ")}${corridorIds.length > 6 ? " dan lainnya" : ""}` : ""}.`,
   rail.length
-    ? `Dari sini kamu bisa transit ke ${rail.slice(0, 3).map(r => `${r.name} (${r.mode.short}, ${r.integrated ? "terintegrasi" : `±${formatDistance(r.distance)}`})`).join(", ")}.`
+    ? `Dari sini kamu bisa transit ke ${rail.slice(0, 3).map(r => `${r.name} (${r.mode.short}${codesOf(r) ? ` lin ${codesOf(r)}` : ""}, ${r.integrated ? "terintegrasi" : `±${formatDistance(r.distance)}`})`).join(", ")}.`
     : modes.length ? `Dari sini kamu bisa transit ke ${modes.map(m => m.label).join(" dan ")}.` : "",
   group ? `Halte ini termasuk ${group.hasTerminal ? "kawasan " : ""}${group.name} bersama ${siblings.length} halte lain yang bisa dijangkau dengan berjalan kaki.` : "",
   !group && nearby.length ? `Halte terdekat adalah ${nameOf(nearby[0].id)} (sekitar ${formatDistance(nearby[0].distance)}).` : "",
@@ -146,7 +150,8 @@ const ldSchema = {
       <h1>{stop.name}</h1>
       <ul class="soft-chips">
         <li><b>{serving.length}</b> rute berhenti di sini</li>
-        {modes.map(m => <li class="mode-chip" style={`--m:${m.color}`}>Transit {m.label}</li>)}
+        {heroLines.length > 0 && <li class="line-chip">Transit <span class="lc-row">{heroLines.map(l => <LineCode line={l} size="sm" href={`/kereta/${l}`} />)}</span></li>}
+        {modesNoLine.map(m => <li class="mode-chip" style={`--m:${m.color}`}>Transit {m.label}</li>)}
         {stop.split_by_direction && <li>2 bangunan per arah</li>}
         {group && <li><a href={`/kawasan/${group.slug}`}>{group.name}</a></li>}
       </ul>

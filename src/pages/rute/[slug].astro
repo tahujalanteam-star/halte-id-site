@@ -4,7 +4,7 @@ import ShareButton from "../../components/ShareButton.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { routeMapUrl } from "../../lib/map-utils.js";
 import { octiPath } from "../../lib/octi.js";
-import { railBadgesForStop } from "../../lib/rail.js";
+import { railBadgesForStop, sortLines } from "../../lib/rail.js";
 // Aksen garis hero: segmen horizontal & diagonal 45° saja
 const HERO_LINE = octiPath([[-10, 124], [60, 124], [100, 84], [180, 84], [224, 40], [300, 40], [344, 84], [420, 84]], 7);
 import {
@@ -85,7 +85,10 @@ const MODE_LABEL = { mrt: "MRT", lrt: "LRT", krl: "KRL", kai: "KAI" };
 const routeStopIds = [...new Set(directions.flatMap(d => d.stop_ids))];
 const transferStops = routeStopIds.filter(id => (stops[id]?.transfers || []).some(t => String(t.line) !== String(route.id)));
 const modes = [...new Set(routeStopIds.flatMap(id => (stops[id]?.transfers || []).map(t => t.type)))].filter(t => MODE_LABEL[t]).map(t => MODE_LABEL[t]);
-const heroInfo = [modes.length ? `Terhubung ke ${modes.join(", ")}` : null, transferStops.length ? `${transferStops.length} halte transit` : null].filter(Boolean).join(" · ");
+// Lin kereta yang terhubung (kode FDTJ: A, B, C, M, ...); moda tanpa lin (mis. KAI antarkota) tetap ditulis sebagai teks
+const routeRailLines = sortLines([...new Set(routeStopIds.flatMap(id => railBadgesForStop(id).badges.map(b => b.key).filter(Boolean)))]);
+const otherModes = routeRailLines.length ? modes.filter(m => m === "KAI") : modes;
+const heroInfo = [otherModes.length ? `${routeRailLines.length ? "" : "Terhubung ke "}${otherModes.join(", ")}` : null, transferStops.length ? `${transferStops.length} halte transit` : null].filter(Boolean).join(" · ");
 const category = categoryOf(summary);
 const routeName = summary.route_name || route.route_number;
 const badgeText = routeLabel(summary);
@@ -131,7 +134,7 @@ const ldSchema = {
       <div class="hero-text">
         <p class="hero-kicker">{categoryLabel(category)}</p>
         <h1>{routeName}</h1>
-        {heroInfo && <p class="hero-sub">{heroInfo}</p>}
+        {(routeRailLines.length > 0 || heroInfo) && <p class="hero-sub">{routeRailLines.length > 0 && <>Terhubung ke <span class="lc-row hero-lc">{routeRailLines.map(l => <LineCode line={l} size="sm" href={`/kereta/${l}`} />)}</span>{heroInfo && " · "}</>}{heroInfo}</p>}
       </div>
     </div>
     <ul class="hero-chips">

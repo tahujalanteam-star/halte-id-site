@@ -70,6 +70,14 @@ const chip = (label, color) => h("div", {
   },
 }, label);
 
+// Lingkaran kode lin (A, B, C, M, ...) seperti di situs: putih, cincin & huruf berwarna lin
+const codeChip = (code, color) => h("div", {
+  style: {
+    display: "flex", alignItems: "center", justifyContent: "center", height: 58, minWidth: 58, padding: code.length > 1 ? "0 12px" : 0, borderRadius: 999, marginRight: 10,
+    fontSize: code.length > 1 ? 24 : 28, fontWeight: 800, color, background: "#ffffff", border: `6px solid ${color}`,
+  },
+}, code);
+
 const brand = () => h("div", { style: { display: "flex", alignItems: "center" } },
   h("div", { style: { display: "flex", width: 52, height: 52, borderRadius: 14, background: C.primary, alignItems: "center", justifyContent: "center", marginRight: 14 } },
     h("svg", { width: 30, height: 30, viewBox: "0 0 24 24" },
@@ -88,7 +96,7 @@ function lines(c1, c2) {
     h("circle", { cx: 460, cy: 440, r: 26, fill: "#ffffff", stroke: c1, "stroke-width": 12, opacity: 0.55 }));
 }
 
-// spec: { kicker, title, accent, accent2?, badge?: {text, color}, icon?: {name, color, bg}, chips: [{label, color?}] }
+// spec: { kicker, title, accent, accent2?, badge?: {text, color}, icon?: {name, color, bg}, chips: [{label, color?} | {code, color}] }
 export function ogElement(spec) {
   const accent = spec.accent || C.primary;
   const lead = spec.badge
@@ -109,7 +117,7 @@ export function ogElement(spec) {
     brand(),
     h("div", { style: { display: "flex", marginTop: 64, fontSize: 26, fontWeight: 800, letterSpacing: 3, textTransform: "uppercase", color: spec.kickerColor || (readableText(accent) === "#ffffff" ? accent : C.sub) } }, spec.kicker),
     h("div", { style: { display: "flex", alignItems: "center", marginTop: 18, width: OG_W - 144 - 60 } }, lead, title(spec.title)),
-    h("div", { style: { display: "flex", marginTop: "auto" } }, ...(spec.chips || []).slice(0, 4).map(c => chip(c.label, c.color))));
+    h("div", { style: { display: "flex", alignItems: "center", marginTop: "auto" } }, ...(spec.chips || []).slice(0, 7).map(c => c.code ? codeChip(c.code, c.color) : chip(c.label, c.color))));
 }
 
 export async function renderOg(spec) {

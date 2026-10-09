@@ -25,7 +25,7 @@ export function loadIndex() {
     const prep = it => { it.f = fold(it.label); it.fa = fold(it.alias || ""); it.words = (it.f + " " + it.fa + " " + fold(it.kind || "")).split(/[^a-z0-9]+/).filter(Boolean); return it; };
     data = [
       ...d.r.map(([id, label, slug, c, on]) => ({ t: "r", id, label, url: `/rute/${slug}`, c, on, w: 0 })),
-      ...d.s.map(([label, alias, slug, cat, c]) => ({ t: "s", label, alias, url: `/stasiun/${slug}`, cat, c, w: 1 })),
+      ...d.s.map(([label, alias, slug, cat, c, codes]) => ({ t: "s", label, alias, url: `/stasiun/${slug}`, cat, c, codes: codes || [], w: 1 })),
       ...d.h.map(([label, id, brt]) => ({ t: "h", label, url: `/halte/${id}`, brt, w: 2 })),
       ...d.p.map(([label, alias, slug, cat, kind, pop]) => ({ t: "p", label, alias, url: `/tempat/${slug}`, cat, kind: kind || cat, w: pop ? 1 : 3 })),
     ].map(prep);
@@ -89,6 +89,17 @@ export function resultLink(it) {
   text.className = "res-text";
   text.innerHTML = "<b></b><small></small>";
   text.querySelector("b").textContent = it.label;
+  // stasiun: kode lin (A, B, C, M, ...) di samping nama
+  if (it.t === "s" && it.codes?.length) {
+    const row = document.createElement("span");
+    row.className = "res-lc";
+    for (const [code, color] of it.codes) {
+      const lc = document.createElement("span");
+      lc.className = "lc is-sm"; lc.style.setProperty("--lc", color);
+      const b = document.createElement("b"); b.textContent = code; lc.appendChild(b); row.appendChild(lc);
+    }
+    text.querySelector("b").appendChild(row);
+  }
   text.querySelector("small").textContent = subOf(it);
   a.append(tag, text);
   return a;
