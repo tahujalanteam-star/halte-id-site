@@ -51,6 +51,7 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
 
   <script type="application/json" id="cfg" set:html={JSON.stringify({ token: TOKEN, cats })} />
   <script>
+    import { buildLocalityMap, renderLocalityFigure } from "../lib/locality-core.js";
     const cfg = JSON.parse(document.getElementById("cfg").textContent);
     const $ = id => document.getElementById(id);
     const btn = $("locate"), statusEl = $("status"), results = $("results");
@@ -73,6 +74,9 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
     const loadRoutes = () => (routesPromise ||= fetch("/data/geo/routes.json").then(r => { if (!r.ok) throw new Error("data"); return r.json(); }));
     let stationsPromise = null;
     const loadStations = () => (stationsPromise ||= fetch("/data/geo/stations.json").then(r => r.ok ? r.json() : []).catch(() => []));
+    // Data rel & stasiun untuk peta sekitar (±44 KB terkompresi), hanya diminta saat peta dibuka
+    let localityPromise = null;
+    const loadLocality = () => (localityPromise ||= fetch("/data/geo/locality.json").then(r => { if (!r.ok) throw new Error("data"); return r.json(); }).catch(e => { localityPromise = null; throw e; }));
     const loadData = async (me) => {
       const ty = Math.floor(me.lat / TILE), tx = Math.floor(me.lng / TILE);
       const keys = [];
@@ -128,18 +132,40 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
           <div class="area-route"><a class="area-route-main" href="/rute/${r[0]}" style="--c:${r[2]};--on:${r[3]}"><span class="badge-bus">${esc(r[5] || id)}</span><strong>${esc(r[1])}</strong></a>
           <p class="area-at">Naik di <a href="/halte/${encodeURIComponent(s.id)}">${esc(s.name)}</a> (${fmt(s.d)})</p></div>`; }).join("")}</div></section>`).join("") : "";
 
-      // Peta opsional (1 gambar Mapbox, hanya bila diklik)
+      // Peta sekitar (sama dengan peta di halaman halte & stasiun): lingkaran jalan kaki 600 m, rel, kotak stasiun, halte bernomor.
+      // Dihitung di browser dari posisimu; data rel & gambar Mapbox baru diminta saat petanya dibuka.
       const slot = $("map-slot");
       slot.innerHTML = "";
-      if (cfg.token) {
-        const pins = near.map((s, i) => `pin-s-${i + 1}+6b7381(${s.lng.toFixed(5)},${s.lat.toFixed(5)})`)
-          .concat(nearSt.filter(x => x.d <= 1500).map((x, i) => `pin-s-${String.fromCharCode(97 + i)}+${x.mode[0].slice(1)}(${x.lng.toFixed(5)},${x.lat.toFixed(5)})`))
-          .concat(`pin-l+16a34a(${me.lng.toFixed(5)},${me.lat.toFixed(5)})`).join(",");
-        const style = document.documentElement.getAttribute("data-theme") === "dark" ? "dark-v11" : "streets-v12";
-        const url = `https://api.mapbox.com/styles/v1/mapbox/${style}/static/${pins}/auto/760x340@2x?padding=50&access_token=${cfg.token}`;
-        slot.innerHTML = `<details class="map-toggle"><summary><span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span><span class="mt-text"><b>Lihat di peta</b><span>Posisimu (hijau), halte bernomor, stasiun berhuruf</span></span></summary><figure class="mini-map"><img alt="Peta posisimu dan halte terdekat" width="760" height="340"></figure></details>`;
-        const d = slot.querySelector("details"), img = slot.querySelector("img");
-        d.addEventListener("toggle", () => { if (d.open && !img.src) img.src = url; });
+      if (cfg.token && near[0].d <= 3000) {
+        const inRing = near.filter(s => s.d <= 1000);
+        const pinStops = inRing.length ? inRing : near.slice(0, 3);
+        const pins = pinStops.map(s => ({ lat: s.lat, lng: s.lng, num: near.indexOf(s) + 1, href: `/halte/${encodeURIComponent(s.id)}`, name: s.name }));
+        slot.innerHTML = `<details class="map-toggle lm-toggle"><summary><span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span><span class="mt-text"><b>Lihat di peta</b><span>Posisimu, halte bernomor, dan stasiun dalam ±8 menit jalan kaki</span></span><svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="lm-host"><p class="near-note">Memuat peta…</p></div></details>`;
+        const d = slot.querySelector("details"), host = slot.querySelector(".lm-host");
+        let started = false;
+        d.addEventListener("toggle", async () => {
+          if (!d.open || started) return;
+          started = true;
+          try {
+            const L = await loadLocality();
+            const termBy = new Map();
+            for (const [key, t] of Object.entries(L.terminals)) for (const id of t.stops) termBy.set(id, key);
+            const lineInfo = k => L.lines[k] || { color: "#6b7381", code: "?", label: k };
+            const m = buildLocalityMap({ center: me, mainPoint: me, pins, token: cfg.token }, {
+              railGeo: L.rail, stations: L.stations, isRailLine: k => !!L.lines[k], lineInfo,
+              terminalOfStop: id => termBy.get(id) || null, terminals: L.terminals,
+            });
+            if (!m) throw new Error("peta");
+            host.innerHTML = renderLocalityFigure(m, { alt: "Peta posisimu, halte terdekat, dan stasiun sekitar", mainLabel: "posisimu", lineInfo, autoload: false });
+            const fr = host.querySelector(".lm-frame"), img = host.querySelector("img[data-src]");
+            const fit = () => { const w = fr.clientWidth; if (w) fr.style.setProperty("--s", String(Math.max(0.72, w / 760))); };
+            fit(); new ResizeObserver(fit).observe(fr);
+            img.src = window.mapSrcFor ? window.mapSrcFor(img) : img.dataset.src;
+          } catch {
+            started = false;
+            host.innerHTML = '<p class="near-note">Peta belum bisa dimuat. Tutup lalu buka lagi untuk mencoba ulang.</p>';
+          }
+        });
       }
       results.hidden = false;
       results.scrollIntoView({ behavior: "smooth", block: "start" });
