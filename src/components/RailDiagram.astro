@@ -1,0 +1,100 @@
+---
+// Peta skematik jaringan kereta Jabodetabek (bagian atas /kereta): SVG dibuat saat build, bisa digeser & di-zoom.
+// Tata letak (posisi stasiun, jalur, label, latar) diatur di src/lib/rail-diagram.js.
+import LineCode from "./LineCode.astro";
+import { loadStations } from "../lib/data.js";
+import { lineInfo } from "../lib/rail.js";
+import { buildRailDiagram, renderRailDiagramSvg, U } from "../lib/rail-diagram.js";
+
+const m = buildRailDiagram({ stations: loadStations(), lineInfo });
+const svg = renderRailDiagramSvg(m, lineInfo);
+const used = [...new Set(m.lines.map(l => l.key))];
+const core = [-12 * U, -9.5 * U, 21 * U, 19 * U];   // tampilan awal: pusat kota
+---
+<figure class="rd" data-full={m.viewBox.join(",")} data-core={core.join(",")}>
+  <div class="rd-view" set:html={svg} />
+  <div class="rd-ctl">
+    <button type="button" data-z="in" aria-label="Perbesar peta">+</button>
+    <button type="button" data-z="out" aria-label="Perkecil peta">−</button>
+    <button type="button" data-z="all" aria-label="Tampilkan seluruh peta" style="font-size:13px">⤢</button>
+  </div>
+  <figcaption class="rd-legend">
+    {used.map(k => <LineCode line={k} name="short" size="sm" href={`/kereta/${k}`} />)}
+    <span class="mm-item"><svg width="16" height="12" aria-hidden="true"><circle cx="8" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="2" /></svg>stasiun transit</span>
+  </figcaption>
+</figure>
+<p class="rd-hint">Geser untuk menjelajah, cubit atau gulir untuk zoom. Klik stasiun atau garis untuk membuka halamannya. Peta skematis, tidak berskala.</p>
+
+<style is:global>
+.rd{position:relative;margin:0 0 .4rem;border:1px solid var(--border-color);border-radius:18px;background:var(--card-bg);box-shadow:var(--shadow);overflow:hidden}
+.rd-view{height:min(560px,72vh);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.rd-view.is-drag{cursor:grabbing}
+.rd-svg{width:100%;height:100%;display:block}
+.rd{--rd-land:#f5f3ec;--rd-sea:#d7e8f2;--rd-park:#dcebd2;--rd-park-t:#5d7a52;--rd-sea-t:#5b7f99}
+[data-theme=dark] .rd{--rd-land:#131923;--rd-sea:#122437;--rd-park:#17291f;--rd-park-t:#6f9a78;--rd-sea-t:#5f86a6}
+.rd-bg .land{fill:var(--rd-land)} .rd-bg .sea{fill:var(--rd-sea)} .rd-bg .park{fill:var(--rd-park)}
+.rd-bg text{font-family:var(--font-head);font-style:italic;font-weight:600;text-anchor:middle;pointer-events:none}
+.rd-bg .sea-t{font-size:15px;fill:var(--rd-sea-t);letter-spacing:.06em} .rd-bg .park-t{font-size:10px;fill:var(--rd-park-t)}
+.rd-ico path{fill:var(--text-main)}
+.rd-lines path{fill:none;stroke-width:4.6;stroke-linecap:round;stroke-linejoin:round}
+.rd-line:hover path{stroke-width:7}
+[data-theme=dark] [data-line=krl-bandara] path{stroke:#8e91e8}[data-theme=dark] [data-line=krl-tangerang] path{stroke:#c08a5b}
+[data-theme=dark] [data-line=lrt-cibubur] path{stroke:#6f8ef0}[data-theme=dark] [data-line=lrt-bekasi] path{stroke:#3fae6e}
+.rd-links polyline{fill:none;stroke:var(--text-main);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.rd-st circle{fill:var(--card-bg);stroke-width:2.2}
+.rd-st circle.ring{stroke:var(--text-main);stroke-width:2.2}
+.rd-st .cap-o{stroke:var(--text-main);stroke-width:10.6;stroke-linecap:round}.rd-st .cap-i{stroke:var(--card-bg);stroke-width:7.6;stroke-linecap:round}
+.rd-st .cap-o.big{stroke-width:17}.rd-st .cap-i.big{stroke-width:13.4}
+.rd-st circle.dt{stroke:none}.rd-st circle.chip{fill:var(--card-bg);stroke-width:1.7}
+.rd-st text.code{font-size:7.4px;font-weight:800;text-anchor:middle;stroke:none}
+.rd-st text{font-family:var(--font-head);font-weight:700;fill:var(--text-main);stroke:var(--rd-land);stroke-width:3px;paint-order:stroke}
+.rd-st .is-inter text{font-weight:800}
+.rd-st a:hover text:not(.code){fill:var(--primary)} .rd-st a:hover .cap-o,.rd-st a:hover circle.ring{stroke:var(--primary)}
+.rd-notes rect{fill:var(--card-bg);stroke:var(--border-color)} .rd-notes circle{fill:var(--card-bg);stroke-width:1.8}
+.rd-notes text{font:700 9.5px var(--font-head);fill:var(--text-sub)} .rd-notes text.c{font-size:7.5px;font-weight:800;text-anchor:middle}
+.rd-ctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.rd-ctl button{width:36px;height:36px;border-radius:10px;border:1px solid var(--border-color);background:var(--card-bg);color:var(--text-main);font:700 18px/1 var(--font-head);box-shadow:var(--shadow);cursor:pointer}
+.rd-legend{display:flex;flex-wrap:wrap;gap:.35rem .9rem;padding:.65rem 1rem;border-top:1px solid var(--border-color);font-size:.8rem;font-weight:600}
+.rd-hint{font-size:.78rem;color:var(--text-sub);margin:0 .2rem 1.6rem}
+.rd-ctl button:hover{color:var(--primary)}
+</style>
+
+<script>
+  // Geser & zoom lewat viewBox (mouse, sentuh, cubit, roda, tombol). Klik setelah menggeser tidak membuka tautan.
+  document.querySelectorAll<HTMLElement>("figure.rd").forEach(fig => {
+    const view = fig.querySelector<HTMLElement>(".rd-view")!, svg = view.querySelector("svg")!;
+    const FULL = fig.dataset.full!.split(",").map(Number), CORE = fig.dataset.core!.split(",").map(Number);
+    let vb = CORE.slice();
+    const fit = (r: number[]) => { const a = view.clientWidth / view.clientHeight; let [x, y, w, h] = r;
+      if (w / h > a) { const nh = w / a; y -= (nh - h) / 2; h = nh; } else { const nw = h * a; x -= (nw - w) / 2; w = nw; } return [x, y, w, h]; };
+    const clamp = (r: number[]) => { let [x, y, w, h] = r; const maxW = FULL[2] * 1.6, minW = 160;
+      if (w > maxW) { const k = maxW / w; x += (w - maxW) / 2; y += (h - h * k) / 2; w = maxW; h *= k; }
+      if (w < minW) { const k = minW / w; x -= (minW - w) / 2; y -= (h * k - h) / 2; w = minW; h *= k; }
+      x = Math.min(Math.max(x, FULL[0] - w * 0.6), FULL[0] + FULL[2] - w * 0.4); y = Math.min(Math.max(y, FULL[1] - h * 0.6), FULL[1] + FULL[3] - h * 0.4); return [x, y, w, h]; };
+    const set = (r: number[]) => { vb = clamp(r); svg.setAttribute("viewBox", vb.map(v => v.toFixed(1)).join(" ")); };
+    const toSvg = (cx: number, cy: number) => { const b = view.getBoundingClientRect(); return [vb[0] + (cx - b.left) / b.width * vb[2], vb[1] + (cy - b.top) / b.height * vb[3]]; };
+    const zoomAt = (k: number, cx: number, cy: number) => { const [px, py] = toSvg(cx, cy); set([px - (px - vb[0]) * k, py - (py - vb[1]) * k, vb[2] * k, vb[3] * k]); };
+    const mid = () => { const b = view.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2] as const; };
+    set(fit(CORE));
+    new ResizeObserver(() => set(fit(vb))).observe(view);
+    view.addEventListener("wheel", e => { e.preventDefault(); zoomAt(Math.exp(e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
+    const pts = new Map<number, [number, number]>(); let moved = 0, last = 0;
+    view.addEventListener("pointerdown", e => { pts.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; last = 0; });
+    view.addEventListener("pointermove", e => {
+      const prev = pts.get(e.pointerId); if (!prev) return;
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      const b = view.getBoundingClientRect();
+      // tangkap pointer baru setelah benar-benar menggeser, agar klik biasa tetap membuka tautan
+      if (moved > 4 && !view.hasPointerCapture(e.pointerId)) { view.setPointerCapture(e.pointerId); view.classList.add("is-drag"); }
+      if (pts.size === 1) { const dx = e.clientX - prev[0], dy = e.clientY - prev[1]; moved += Math.abs(dx) + Math.abs(dy); set([vb[0] - dx / b.width * vb[2], vb[1] - dy / b.height * vb[3], vb[2], vb[3]]); }
+      else if (pts.size === 2) { const [a, c] = [...pts.values()]; const d = Math.hypot(a[0] - c[0], a[1] - c[1]); if (last) zoomAt(last / d, (a[0] + c[0]) / 2, (a[1] + c[1]) / 2); last = d; moved += 10; }
+    });
+    const up = (e: PointerEvent) => { pts.delete(e.pointerId); last = 0; if (!pts.size) view.classList.remove("is-drag"); };
+    view.addEventListener("pointerup", up); view.addEventListener("pointercancel", up);
+    view.addEventListener("click", e => { if (moved > 6) { e.preventDefault(); e.stopPropagation(); } }, true);
+    fig.querySelectorAll<HTMLButtonElement>("[data-z]").forEach(btn => btn.addEventListener("click", () => {
+      const z = btn.dataset.z;
+      if (z === "all") set(fit(FULL)); else zoomAt(z === "in" ? 0.7 : 1 / 0.7, ...mid());
+    }));
+  });
+</script>

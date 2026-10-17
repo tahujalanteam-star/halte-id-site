@@ -1,5 +1,6 @@
 ---
 import LineCode from "../../components/LineCode.astro";
+import RailDiagram from "../../components/RailDiagram.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { railLines, RAIL_MODES, MODE_ORDER } from "../../lib/rail.js";
 
@@ -26,6 +27,8 @@ const total = new Set(lines.flatMap(l => l.patterns.flatMap(p => p.stations))).s
       <a class="tarif-cta is-ghost" href="/stasiun">Semua stasiun</a>
     </div>
   </header>
+
+  <RailDiagram />
 
   {groups.map(g => (
     <section class="home-section">
