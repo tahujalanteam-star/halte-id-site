@@ -1,6 +1,7 @@
 // Pembagian daftar halte per huruf awal. Huruf dengan halte sangat banyak (mis. S: "Simpang", "Sbr.")
 // dipecah menjadi beberapa halaman berurutan agar tiap halaman tetap ringan.
 import { loadStops } from "./data.js";
+import { isMergedStop } from "./stop-merge.js";
 
 export const CHUNK = 600;
 const letterOf = name => { const c = name.trim().charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : "#"; };
@@ -9,7 +10,7 @@ let _pages = null;
 // [{ slug, letter, label, items: [[id, stop], ...], part, parts }]
 export function stopLetterPages() {
   if (_pages) return _pages;
-  const entries = Object.entries(loadStops()).sort((a, b) => a[1].name.localeCompare(b[1].name, "id", { numeric: true }));
+  const entries = Object.entries(loadStops()).filter(([id]) => !isMergedStop(id)).sort((a, b) => a[1].name.localeCompare(b[1].name, "id", { numeric: true }));
   const byLetter = new Map();
   for (const e of entries) {
     const L = letterOf(e[1].name);

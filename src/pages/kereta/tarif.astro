@@ -89,7 +89,7 @@ const integ = F.integrasi;
       } else {
         html += `<div class="calc-fares"><div><span>Tarif</span><b>${rupiah(f.fare)}</b>${f.km ? `<small>±${fmtKm(f.km)} km jarak rel</small>` : f.network === "lrtj" ? "<small>tarif datar semua stasiun</small>" : ""}</div></div>`;
       }
-      html += `<p class="calc-links"><a href="/stasiun/${a}">Stasiun ${names[a]}</a> · <a href="/stasiun/${b}">Stasiun ${names[b]}</a></p>`;
+      html += `<p class="calc-links"><a href="/stasiun/${a}/">Stasiun ${names[a]}</a> · <a href="/stasiun/${b}/">Stasiun ${names[b]}</a></p>`;
       out.innerHTML = html;
     }
     modes.forEach(m => m.addEventListener("click", () => setNet(m.dataset.net)));

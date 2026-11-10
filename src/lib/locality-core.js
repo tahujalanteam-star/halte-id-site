@@ -174,13 +174,13 @@ export function buildLocalityMap({ center, mainStation = null, mainPoint = null,
   for (const pin of [...pins].sort((a, b) => a.num - b.num)) {
     const p = P(pin.lat, pin.lng);
     if (!inFrame(p, -8)) continue;
-    if (main && !terminalOfStop((pin.href || '').replace(/^\/halte\//, '')) && Math.hypot(main.p[0] - p[0], main.p[1] - p[1]) < 4) { main.nums.push(pin.num); continue; }   // halte yang sama dengan titik utama
+    if (main && !terminalOfStop((pin.href || '').replace(/^\/halte\//, '').replace(/\/$/, '')) && Math.hypot(main.p[0] - p[0], main.p[1] - p[1]) < 4) { main.nums.push(pin.num); continue; }   // halte yang sama dengan titik utama
     items.push({ p, num: pin.num, href: pin.href, name: pin.name, w: 20 });
   }
   // Jalur-jalur satu terminal (berjarak beberapa meter) jadi satu penanda yang menaut ke denah terminal
   const termGroups = new Map();
   for (const it of [...items]) {
-    const key = terminalOfStop((it.href || "").replace(/^\/halte\//, ""));
+    const key = terminalOfStop((it.href || "").replace(/^\/halte\//, "").replace(/\/$/, ""));
     if (!key) continue;
     if (!termGroups.has(key)) termGroups.set(key, []);
     termGroups.get(key).push(it);

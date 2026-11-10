@@ -294,7 +294,7 @@ const pinIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
           }
           const [key] = h.row;
           const badges = h.rows.map(([, code, color]) => `<span class="lc is-lg td-lc" style="--lc:${color}"><b>${esc(code)}</b></span>`).join("");
-          return `<li><a class="td-route" href="/kereta/${key}">
+          return `<li><a class="td-route" href="/kereta/${key}/">
             <span class="td-badges">${badges}</span>
             <span class="td-body"><b>${esc(h.rows.map(r => r[3]).join(" / "))}</b>
               <span class="td-leg">Naik di <b>${esc(St[h.from].label)}</b>${walk(h.dA)}</span>

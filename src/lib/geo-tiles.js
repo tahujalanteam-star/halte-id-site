@@ -2,6 +2,7 @@
 // sehingga browser cukup mengunduh petak di sekitar posisi pengguna, bukan seluruh 7.000+ halte.
 import { loadStops, loadStopServices, loadRoutesIndex, compareCodes } from "./data.js";
 import { coordOf } from "./stop-insights.js";
+import { isMergedStop, partnerStop } from "./stop-merge.js";
 
 export const TILE_DEG = 0.05;
 export const tileKey = (lat, lng) => `${Math.floor(lat / TILE_DEG)}_${Math.floor(lng / TILE_DEG)}`;
@@ -15,11 +16,13 @@ export function geoTiles() {
   const known = new Set(loadRoutesIndex().map(e => String(e.id)));
   _tiles = new Map();
   for (const [id, st] of Object.entries(stops)) {
+    if (isMergedStop(id)) continue;      // halte Sbr. digabung: rutenya ikut di entri halte pasangannya
     const c = coordOf(id);
     if (!c) continue;
     const k = tileKey(c.lat, c.lng);
     if (!_tiles.has(k)) _tiles.set(k, []);
-    const routes = (svc[id] || []).filter(x => known.has(String(x))).sort(compareCodes);
+    const p = partnerStop(id);
+    const routes = [...new Set([...(svc[id] || []), ...(p ? svc[p] || [] : [])].map(String))].filter(x => known.has(x)).sort(compareCodes);
     _tiles.get(k).push([id, st.name, +c.lat.toFixed(6), +c.lng.toFixed(6), st.type === "brt" ? 1 : 0, routes]);
   }
   return _tiles;

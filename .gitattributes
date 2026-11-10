@@ -1,0 +1,10 @@
+# Simpan semua file teks dengan akhiran baris LF di repo dan di folder kerja (Windows & Mac sama),
+# agar perpindahan laptop lewat OneDrive tidak memunculkan perubahan palsu.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.woff2 binary
+*.pdf binary
+*.tgz binary
+*.zip binary

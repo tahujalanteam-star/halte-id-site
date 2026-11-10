@@ -9,11 +9,13 @@ import TerminalDiagram from "../../components/TerminalDiagram.astro";
 import { TERMINALS, terminalOfStop } from "../../lib/terminals.js";
 import { routeLabel, placeCategoryLabel, badgeVars, groupByCategory, categoryOf, loadStops, loadRoutesIndex, loadStopServices, buildRouteLookup, routesForStop } from "../../lib/data.js";
 import { stationsForStop, primaryMode, modeInfo, lineInfo, CURATED_MATCH , sortLines } from "../../lib/rail.js";
+import { isMergedStop, partnerStop } from "../../lib/stop-merge.js";
 import { routeContext, nearbyStops, placesNearStop, stopGroups, coordOf, distanceM, formatDistance, staticStopMap, compassDir } from "../../lib/stop-insights.js";
 
 export async function getStaticPaths() {
   const stops = loadStops();
-  return Object.keys(stops).map(stopId => ({
+  // Halte Sbr. yang digabung ke pasangannya tidak punya halaman sendiri (pengalihan diatur di astro.config.mjs)
+  return Object.keys(stops).filter(id => !isMergedStop(id)).map(stopId => ({
     params: { slug: stopId },
     props: { stopId },
   }));
@@ -24,7 +26,12 @@ const stops = loadStops();
 const stop = stops[stopId];
 const stopServices = loadStopServices();
 const routeLookup = buildRouteLookup(loadRoutesIndex());
-const serving = routesForStop(stopId, stopServices, routeLookup);
+// Halte seberang (Sbr.) yang digabung ke halaman ini: rute & urutan halte dari kedua sisi jalan ditampilkan bersama
+const partnerId = partnerStop(stopId);
+const partner = partnerId ? stops[partnerId] : null;
+const servingOwn = routesForStop(stopId, stopServices, routeLookup);
+const serving = [...servingOwn, ...(partnerId ? routesForStop(partnerId, stopServices, routeLookup) : [])
+  .filter(r => !servingOwn.some(o => String(o.id) === String(r.id)))];
 const typeLabel = stop.type === "brt" ? "Halte BRT" : "Halte Non-BRT";
 const isBrt = stop.type === "brt";
 const MODE = { mrt: { label: "MRT", color: "#db0000" }, lrt: { label: "LRT", color: "#c2185b" }, krl: { label: "KRL", color: "#db6300" }, kai: { label: "KAI", color: "#1e3a8a" } };
@@ -45,10 +52,12 @@ const nameOf = id => stops[id]?.name || id;
 
 // Konteks sebelum/sesudah per rute & arah
 const ctx = routeContext(stopId);
+const ctxPartner = partnerId ? routeContext(partnerId) : new Map();
 // Satu baris per arah, dibaca kiri → kanan searah laju bus:
 // [┄ N halte] [sebelumnya] [KAMU DI SINI] ▶ [berikutnya] [┄ N halte] [halte akhir]
 // Rute melingkar (halte awal = halte akhir, banyak di Mikrotrans): judulnya "Melingkar, kembali ke X".
-function trackFor(o) {
+function trackFor(o, hereId = stopId) {
+  const across = hereId !== stopId;
   const loop = o.firstId === o.lastId && o.total > 2;
   const endRole = loop ? "kembali ke awal" : "halte akhir";
   const node = (id, state, role) => ({ kind: "node", id, name: nameOf(id), state, role });
@@ -57,7 +66,7 @@ function trackFor(o) {
     if (o.pos - 1 > 0) items.push({ kind: "gap", count: o.pos - 1, state: "past", title: `${o.pos - 1} halte sebelumnya, mulai dari ${nameOf(o.firstId)}` });
     items.push(node(o.prevId, "past", o.pos - 1 === 0 ? "halte awal" : ""));
   }
-  items.push({ kind: "node", id: stopId, name: stop.name, state: "here", role: "kamu di sini" });
+  items.push({ kind: "node", id: hereId, name: nameOf(hereId), state: "here", role: across ? "naik di seberang" : "kamu di sini" });
   const isLast = o.pos === o.total - 1;
   if (!isLast) {
     const nextIsLast = o.pos + 1 === o.total - 1;
@@ -70,18 +79,19 @@ function trackFor(o) {
   return {
     loop, towards, items, isLast,
     heading: loop ? `Melingkar, kembali ke ${towards}` : `Menuju ${towards}`,
-    meta: loop
+    meta: (across ? `naik di seberang jalan (${nameOf(hereId)}) · ` : "") + (loop
       ? (o.pos === 0 ? `halte awal putaran · ${o.total - 1} halte sekali putar` : `halte ke-${o.pos + 1} dari ${o.total - 1} dalam satu putaran`)
-      : `dari ${nameOf(o.firstId)} · halte ke-${o.pos + 1} dari ${o.total}`,
+      : `dari ${nameOf(o.firstId)} · halte ke-${o.pos + 1} dari ${o.total}`),
   };
 }
 function contextFor(routeId) {
-  const occ = ctx.get(String(routeId)) || [];
-  const dirCount = occ[0]?.dirCount || 0;
-  const dirsSeen = new Set(occ.map(o => o.dirIndex));
+  // kemunculan rute di halte ini dan di halte seberangnya (bila digabung)
+  const occ = [...(ctx.get(String(routeId)) || []).map(o => [o, stopId]), ...(ctxPartner.get(String(routeId)) || []).map(o => [o, partnerId])];
+  const dirCount = occ[0]?.[0].dirCount || 0;
+  const dirsSeen = new Set(occ.map(([o]) => o.dirIndex));
   return {
     // Di rute melingkar halte awal juga muncul sebagai halte akhir; cukup tampilkan sebagai awal putaran
-    rows: occ.filter(o => !(o.firstId === o.lastId && o.pos === o.total - 1 && o.total > 2)).map(trackFor),
+    rows: occ.filter(([o]) => !(o.firstId === o.lastId && o.pos === o.total - 1 && o.total > 2)).map(([o, here]) => trackFor(o, here)),
     oneWay: dirCount > 1 && dirsSeen.size === 1,
   };
 }
@@ -94,10 +104,10 @@ function summaryFor(c) {
 // Kawasan & halte terdekat
 const { byStop } = stopGroups();
 const group = byStop.get(stopId) || null;
-const siblings = group ? group.stopIds.filter(id => id !== stopId) : [];
+const siblings = group ? group.stopIds.filter(id => id !== stopId && id !== partnerId) : [];
 const me = coordOf(stopId);
 const groupDist = id => (me && coordOf(id) ? formatDistance(distanceM(me, coordOf(id))) : null);
-const nearby = nearbyStops(stopId, { limit: 6, exclude: siblings });
+const nearby = nearbyStops(stopId, { limit: 6, exclude: partnerId ? [...siblings, partnerId] : siblings });
 const routesAt = id => routesForStop(id, stopServices, routeLookup);
 const places = placesNearStop(stopId);
 
@@ -121,6 +131,7 @@ const intro = [
   rail.length
     ? `Dari sini kamu bisa transit ke ${rail.slice(0, 3).map(r => `${r.name} (${r.mode.short}${codesOf(r) ? ` lin ${codesOf(r)}` : ""}, ${r.integrated ? "terintegrasi" : `±${formatDistance(r.distance)}`})`).join(", ")}.`
     : modes.length ? `Dari sini kamu bisa transit ke ${modes.map(m => m.label).join(" dan ")}.` : "",
+  partner ? `Pasangannya di seberang jalan, ${partner.name}, ikut ditampilkan di halaman ini sehingga rute untuk kedua arah terlihat sekaligus.` : "",
   group ? `Halte ini termasuk ${group.hasTerminal ? "kawasan " : ""}${group.name} bersama ${siblings.length} halte lain yang bisa dijangkau dengan berjalan kaki.` : "",
   !group && nearby.length ? `Halte terdekat adalah ${nameOf(nearby[0].id)} (sekitar ${formatDistance(nearby[0].distance)}).` : "",
 ].filter(Boolean).join(" ");
@@ -153,6 +164,7 @@ const ldSchema = {
         {heroLines.length > 0 && <li class="line-chip">Transit <span class="lc-row">{heroLines.map(l => <LineCode line={l} size="sm" href={`/kereta/${l}`} />)}</span></li>}
         {modesNoLine.map(m => <li class="mode-chip" style={`--m:${m.color}`}>Transit {m.label}</li>)}
         {stop.split_by_direction && <li>2 bangunan per arah</li>}
+        {partner && <li><a href="#seberang">2 sisi jalan</a></li>}
         {group && <li><a href={`/kawasan/${group.slug}`}>{group.name}</a></li>}
       </ul>
     </div>
@@ -165,6 +177,14 @@ const ldSchema = {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V9l4-3 4 3v12"/><path d="M12 21V9l4-3 4 3v12"/><path d="M2 21h20"/></svg>
       <p><b>Halte ini terdiri dari 2 bangunan terpisah, satu untuk tiap arah.</b> Masuklah dari bangunan yang sesuai arah tujuanmu.
       Untuk berganti arah, kamu harus keluar (tap out) lalu masuk lagi (tap in) di bangunan seberang.</p>
+    </aside>
+  )}
+
+  {partner && (
+    <aside class="callout split-callout" id="seberang">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18M3 17h18"/><path d="m7 4-3 3 3 3"/><path d="m17 14 3 3-3 3"/></svg>
+      <p><b>Halte ini punya pasangan di seberang jalan: {partner.name}{where(partnerId) ? ` (${where(partnerId)})` : ""}.</b>
+      Rute dari kedua sisi jalan digabung di halaman ini. Arah yang bertanda <i>naik di seberang jalan</i> berhenti di {partner.name}.</p>
     </aside>
   )}
 

@@ -10,13 +10,15 @@ const path = Astro.url.pathname;
 const showHeaderSearch = path !== "/" && !/^\/cari\/?$/.test(path);
 const isActive = (p) => (p === "/" ? path === "/" : path === p || path.startsWith(p + "/"));
 const siteUrl = Astro.site ? Astro.site.toString().replace(/\/$/, "") : "";
-const canonicalUrl = `${siteUrl}${canonicalPath}`;
+// URL halaman selalu diakhiri garis miring (/halte/blok-m/), sama dengan yang disajikan Cloudflare Pages & sitemap
+const slashed = p => (!p || p === "/" || p.endsWith("/") || /\.[a-z0-9]+$/i.test(p)) ? (p || "/") : `${p}/`;
+const canonicalUrl = `${siteUrl}${slashed(canonicalPath)}`;
 // Gambar pratinjau tautan: dicocokkan otomatis dari path halaman (lihat src/lib/og-pages.js)
 const ogKey = canonicalPath.replace(/^\/|\/$/g, "");
 const ogImageUrl = `${siteUrl}${ogSpecs().has(ogKey) ? `/og/${ogKey}.png` : "/og/umum.png"}`;
 // Data terstruktur (JSON-LD) untuk Google: breadcrumb (crumbs = [{ name, path }]) + skema halaman (schema).
 // Dibuat saat build dari data yang sama dengan isi halaman; tidak ada data tambahan yang perlu dirawat.
-const abs = p => (p && /^https?:/.test(p) ? p : `${siteUrl}${p || ""}`);
+const abs = p => (p && /^https?:/.test(p) ? p : `${siteUrl}${slashed(p || "")}`);
 const ldGraph = [];
 if (canonicalPath === "/") {
   ldGraph.push(

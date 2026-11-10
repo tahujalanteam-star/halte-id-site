@@ -97,10 +97,10 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       $("stop-list").innerHTML = near.map((s, i) => {
         const rs = s.routes.filter(id => data.r[id]);
         return `<div class="near-card nearest-card">
-          <a class="near-top" href="/halte/${encodeURIComponent(s.id)}"><span class="near-num">${i + 1}</span><b>${esc(s.name)}</b>${s.brt ? '<span class="near-dist is-brt">BRT</span>' : ""}</a>
+          <a class="near-top" href="/halte/${encodeURIComponent(s.id)}/"><span class="near-num">${i + 1}</span><b>${esc(s.name)}</b>${s.brt ? '<span class="near-dist is-brt">BRT</span>' : ""}</a>
           <span class="near-where">${fmt(s.d)} · ke ${dirOf(me, s)}${walk(s.d) ? " · " + walk(s.d) : ""}</span>
           <span class="near-badges">${rs.slice(0, 10).map(id => badge(id, data.r[id])).join("")}${rs.length > 10 ? `<span class="service-more">+${rs.length - 10}</span>` : ""}</span>
-          <span class="nearest-actions"><a href="/halte/${encodeURIComponent(s.id)}">Detail halte</a><a href="https://www.google.com/maps/dir/?api=1&origin=${me.lat},${me.lng}&destination=${s.lat},${s.lng}&travelmode=walking" target="_blank" rel="noopener nofollow">Petunjuk jalan kaki ↗</a></span>
+          <span class="nearest-actions"><a href="/halte/${encodeURIComponent(s.id)}/">Detail halte</a><a href="https://www.google.com/maps/dir/?api=1&origin=${me.lat},${me.lng}&destination=${s.lat},${s.lng}&travelmode=walking" target="_blank" rel="noopener nofollow">Petunjuk jalan kaki ↗</a></span>
         </div>`;
       }).join("");
 
@@ -114,10 +114,10 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       if (!nearSt.length) nearSt = stations.filter(x => x.d <= 5000).slice(0, 2);
       $("station-sec").innerHTML = nearSt.length ? `<div class="section-head st-near-head"><h2>Stasiun Kereta Terdekat</h2><span class="count">${nearSt.some(x => x.d <= 1500) ? "radius 1,5 km" : "dalam 5 km"}</span></div>
         <div class="grid near-grid">${nearSt.map((x, i) => `<div class="near-card nearest-card">
-          <a class="near-top" href="/stasiun/${x.slug}"><span class="near-num is-rail" style="background:${x.mode[0]}">${String.fromCharCode(65 + i)}</span><b>${esc(x.name)}</b><span class="near-dist" style="background:${x.mode[0]};color:#fff">${esc(x.mode[1])}</span></a>
+          <a class="near-top" href="/stasiun/${x.slug}/"><span class="near-num is-rail" style="background:${x.mode[0]}">${String.fromCharCode(65 + i)}</span><b>${esc(x.name)}</b><span class="near-dist" style="background:${x.mode[0]};color:#fff">${esc(x.mode[1])}</span></a>
           <span class="near-where">${fmt(x.d)} · ke ${dirOf(me, x)}${walk(x.d) ? " · " + walk(x.d) : ""}${x.via ? " · lewat " + esc(x.via) : ""}</span>
-          ${x.lines.length ? `<span class="lc-row">${x.lines.map(l => `<a class="lc is-sm" href="/kereta/${l[0]}" style="--lc:${l[2]}"><b>${esc(l[1])}</b><span>${esc(l[3] || "")}</span></a>`).join("")}</span>` : ""}
-          <span class="nearest-actions"><a href="/stasiun/${x.slug}${x.sched ? "#jadwal" : ""}">${x.sched ? "Kereta berikutnya" : "Detail stasiun"}</a><a href="https://www.google.com/maps/dir/?api=1&origin=${me.lat},${me.lng}&destination=${x.lat},${x.lng}&travelmode=walking" target="_blank" rel="noopener nofollow">Petunjuk jalan kaki ↗</a></span>
+          ${x.lines.length ? `<span class="lc-row">${x.lines.map(l => `<a class="lc is-sm" href="/kereta/${l[0]}/" style="--lc:${l[2]}"><b>${esc(l[1])}</b><span>${esc(l[3] || "")}</span></a>`).join("")}</span>` : ""}
+          <span class="nearest-actions"><a href="/stasiun/${x.slug}/${x.sched ? "#jadwal" : ""}">${x.sched ? "Kereta berikutnya" : "Detail stasiun"}</a><a href="https://www.google.com/maps/dir/?api=1&origin=${me.lat},${me.lng}&destination=${x.lat},${x.lng}&travelmode=walking" target="_blank" rel="noopener nofollow">Petunjuk jalan kaki ↗</a></span>
         </div>`).join("")}</div>` : "";
 
       // Rute dalam radius 500 m (atau 3 halte terdekat bila tak ada) — dari halte terdekat masing-masing
@@ -129,8 +129,8 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       $("route-sec").innerHTML = byRoute.size ? `<h2 class="routes-near-title">Rute yang Bisa Kamu Naiki ${pool.length ? "dalam 500 m" : "di Sekitarmu"}</h2>` + groups.map(g => `
         <section class="home-section"><div class="section-head"><h3>${esc(g.label)}</h3><span class="count">${g.items.length}</span></div>
         <div class="area-routes">${g.items.map(([id, s]) => { const r = data.r[id]; return `
-          <div class="area-route"><a class="area-route-main" href="/rute/${r[0]}" style="--c:${r[2]};--on:${r[3]}"><span class="badge-bus">${esc(r[5] || id)}</span><strong>${esc(r[1])}</strong></a>
-          <p class="area-at">Naik di <a href="/halte/${encodeURIComponent(s.id)}">${esc(s.name)}</a> (${fmt(s.d)})</p></div>`; }).join("")}</div></section>`).join("") : "";
+          <div class="area-route"><a class="area-route-main" href="/rute/${r[0]}/" style="--c:${r[2]};--on:${r[3]}"><span class="badge-bus">${esc(r[5] || id)}</span><strong>${esc(r[1])}</strong></a>
+          <p class="area-at">Naik di <a href="/halte/${encodeURIComponent(s.id)}/">${esc(s.name)}</a> (${fmt(s.d)})</p></div>`; }).join("")}</div></section>`).join("") : "";
 
       // Peta sekitar (sama dengan peta di halaman halte & stasiun): lingkaran jalan kaki 600 m, rel, kotak stasiun, halte bernomor.
       // Dihitung di browser dari posisimu; data rel & gambar Mapbox baru diminta saat petanya dibuka.
@@ -139,7 +139,7 @@ const cats = [...ROUTE_CATEGORIES, { key: "lainnya", label: "Rute Lainnya" }];
       if (cfg.token && near[0].d <= 3000) {
         const inRing = near.filter(s => s.d <= 1000);
         const pinStops = inRing.length ? inRing : near.slice(0, 3);
-        const pins = pinStops.map(s => ({ lat: s.lat, lng: s.lng, num: near.indexOf(s) + 1, href: `/halte/${encodeURIComponent(s.id)}`, name: s.name }));
+        const pins = pinStops.map(s => ({ lat: s.lat, lng: s.lng, num: near.indexOf(s) + 1, href: `/halte/${encodeURIComponent(s.id)}/`, name: s.name }));
         slot.innerHTML = `<details class="map-toggle lm-toggle"><summary><span class="mt-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg></span><span class="mt-text"><b>Lihat di peta</b><span>Posisimu, halte bernomor, dan stasiun dalam ±8 menit jalan kaki</span></span><svg class="ctx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="lm-host"><p class="near-note">Memuat peta…</p></div></details>`;
         const d = slot.querySelector("details"), host = slot.querySelector(".lm-host");
         let started = false;
